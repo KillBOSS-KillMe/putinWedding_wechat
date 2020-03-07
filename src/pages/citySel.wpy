@@ -1,0 +1,218 @@
+<template>
+  <view>
+    <view class="cityList">
+      <repeat for="{{cityNode}}" item="item">
+        <view class="item">
+          <view class="name">{{item.title}}</view>
+          <repeat for="{{item.data}}" item="sonItem" index="sonindex">
+            <view class="cityItem {{sonItem.can_use == '0' ? 'can_use':''}} {{sonItem.sel == '1' ? 'active' : ''}}" data-code="{{sonItem.code}}" data-canuse="{{sonItem.can_use}}" data-index="{{index}}" data-sonindex="{{sonindex}}" @tap="citySel">
+              {{sonItem.fullName}}
+              <text wx:if="{{sonItem.can_use == '0'}}">(已被占用)</text>
+            </view>
+          </repeat>
+        </view>
+      </repeat>
+    </view>
+    <view class="submit">
+      <view @tap="sub">确定</view>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  export default class CitySel extends wepy.page {
+    config = {
+      navigationBarTitleText: '定位'
+    }
+    components = {
+    }
+
+    mixins = []
+
+    data = {
+      userInfo: null,
+      cityNode: [],
+      searchList: [],
+      type: ''
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      citySel(e) {
+        if (e.currentTarget.dataset.canuse == '0') {
+          wx.showToast({
+            title: '该区域已被占用',
+            icon: 'none'
+          })
+          return false
+        }
+        // 点击城市
+        let sel = e.currentTarget.dataset.sel
+        let index = e.currentTarget.dataset.index
+        let sonindex = e.currentTarget.dataset.sonindex
+        if (sel == '1') {
+          this.cityNode[index].data[sonindex].sel = '0'
+        } else {
+          this.cityNode[index].data[sonindex].sel = '1'
+        }
+        this.$apply()
+      },
+      searchRun(e) {
+        // 搜索执行
+        // 获取搜索内容
+        if (e.detail.value == '') {
+          this.searchList = []
+          return ''
+        }
+        this.getSearchList(e.detail.value)
+      },
+      sub(e) {
+        // 点击确定
+        wx.navigateBack({
+          delta: -1
+        })
+      }
+    }
+
+    events = {
+
+    }
+
+    onLoad(options) {
+      if (options.hasOwnProperty('type')) {
+        this.type = options.type
+      }
+      // 全国省城市
+      this.getRegions()
+    }
+    // 全国省城市
+    getRegions() {
+      wx.showToast({
+        title: '获取城市中...',
+        icon: 'loading',
+        duration: 10000
+      })
+      let url = ''
+      if (this.type == 1 || this.type == 0 || this.type == '') {
+        url = '/regions'
+      } else if (this.type == 2) {
+        url = '/dealer-regions'
+      }
+      wx.request({
+        url: this.$parent.globalData.requestUrl + url,
+        method: 'GET',
+        header: {
+          Authorization: this.$parent.globalData.token,
+          Accept: this.$parent.globalData.apikey
+        },
+        data: {
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          let list = null
+          if (url == '/regions') {
+            list = data.data.city_list
+          } else {
+            list = data.data.data
+          }
+          let cityNode = []
+          for(let key in list){
+            for (let i = 0; i < list[key].length; i++) {
+              list[key][i].sel = '0'
+              if (url == '/regions') {
+                list[key][i].can_use = '1'
+              }
+            }
+            cityNode.push({
+              title: key,
+              data: list[key]
+            })
+          }
+          console.log(cityNode)
+          this.cityNode = cityNode
+          this.$apply()
+        }
+      })
+    }
+    onUnload() {
+      let cityNode = this.cityNode
+      console.log(cityNode)
+      let selCityNode = []
+      for (let i = 0;i < cityNode.length; i++) {
+        for (let y = 0; y < cityNode[i].data.length; y++) {
+          if (cityNode[i].data[y].sel == '1') {
+            selCityNode.push(cityNode[i].data[y])
+          }
+        }
+      }
+      this.$parent.globalData.registeredCityList = selCityNode
+      this.$apply()
+    }
+  }
+</script>
+<style lang="less">
+  .cityList{
+    width: 690rpx;
+    padding: 0 30rpx;
+    margin-bottom: 200rpx;
+  }
+  .name{
+    width: 690rpx;
+    font-size: 40rpx;
+    font-weight: 600;
+    color: #979797;
+    height: 60rpx;
+    line-height: 60rpx;
+  }
+  .cityItem{
+    background-color: #f7f7f7;
+    font-size: 30rpx;
+    color: #343434;
+    padding: 20rpx 30rpx;
+    display: inline-block;
+    margin: 10rpx;
+    border-radius: 90rpx;
+  }
+  .searchList{
+    margin-top: 30rpx;
+  }
+  .active{
+    background-color: #F42652;
+    color: #fff;
+  }
+  .can_use{
+    color: #999;
+  }
+  .sub,
+  .submit {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    // height: 200;
+    width: 690rpx;
+    height: auto;
+    padding: 50rpx 30rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+    view {
+      width: 604rpx;
+      height: 100rpx;
+      border-radius: 5rpx;
+      background-color: #F42652;
+      color: #fff;
+      font-size: 32rpx;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+</style>

@@ -1,0 +1,566 @@
+<template>
+	<view class="check">
+		<view class="checkItem">
+			<label>微信号</label>
+			<input type="text" data-name="weixin_username" placeholder="请输入微信号" @input="getSetData" />
+		</view>
+		<view class="checkItem" @tap="changeIndustries">
+			<label>行业</label>
+			<input type="tel" placeholder="请选择" disabled value="{{formNode.industriesName}}" />
+		</view>
+		<view class="checkItem" @tap="changeCities">
+			<label>城市</label>
+			<input type="text" placeholder="请选择" disabled value="{{formNode.citiesName}}" />
+		</view>
+		<view class="moveInto" @tap='checkIn'>申请入住</view>
+		<view class="modal-mask" @tap="hideModal" catchtouchmove="preventTouchMove" hidden="{{showModal}}"></view>
+		<view class="modal-dialog" hidden="{{showModal}}">
+			<view class="title">选择行业</view>
+			<view class="list">
+				<repeat for="{{list}}" item="item">
+					<view class="{{item.sel == '1'?'active':''}}" data-sel="{{item.sel}}" data-index="{{index}}" @tap="sel">
+						{{item.title}}
+					</view>
+				</repeat>
+			</view>
+			<view class="sub">
+				<view @tap="industrySub">确定</view>
+			</view>
+		</view>
+		<button open-type="getUserInfo" id='getUserInfo' wx:if="{{userInfoButtonShow}}" lang="zh_CN" @getuserinfo="onGetUserInfo"></button>
+	</view>
+</template>
+<script>
+import wepy from 'wepy'
+export default class UserBusiness extends wepy.page {
+  config = {
+    navigationBarTitleText: '商家入驻'
+  };
+  components = {};
+	data = {
+		index: '',
+		formNode: {
+			code: '',								// 小程序code(必填）
+			type: '0',								// 用户类型
+			// phone: '',             	// 电话
+			weixin_username: '',    // 微信号(必选)
+			industriesName: '',     // 行业(仅供显示)
+			industries: '',         // 行业id(必选) 多个行业用逗号(,)隔开
+			citiesName: '',         // 服务区域(仅供显示)
+			cities: '',             	// 服务区域(必选) 保存城市编码 多个用逗号(,)隔开
+			city: ''
+		},
+		disabled: false,
+		currentTime: 60,   // 倒计时初始值
+		time: '发送验证码',
+		code: '',
+		showModal: true,
+		list: [],
+		userInfoButtonShow: true,
+		userInfo: {}
+	};
+	mixins = [];
+	methods = {
+		// 行业选择浮层显示
+		changeIndustries() {
+			this.showModal = false
+			this.$apply()
+		},
+		// 进入城市选择页面
+		changeCities() {
+			this.$navigate(`/pages/citySel?type=${this.formNode.type}`)
+		},
+		// 表单数据获取
+		getSetData(e) {
+			let formNode = this.formNode
+			let name = e.currentTarget.dataset.name
+			let value = e.detail.value
+			formNode[name] = value
+			this.formNode = formNode
+			this.$apply()
+		},
+		getCode() {
+			// 获取验证码
+			this.runGetCode()
+		},
+		// 选择行业
+		sel(e) {
+			let sel = e.currentTarget.dataset.sel
+			let index = e.currentTarget.dataset.index
+			let list = this.list
+			if (sel == '1') {
+				list[index].sel = '0'
+			} else {
+				list[index].sel = '1'
+			}
+			this.list = list
+			this.$apply()
+		}
+	}
+	onLoad(options) {
+		this.userInfo = this.$parent.globalData.userInfo
+		console.log(this.userInfo)
+		// 获取行业列表
+		this.getIndustry()
+		// 用户信息获取
+		this.onGetUserInfo()
+		// 定位
+		this.getLocation()
+		this.$apply()
+	}
+	onShow() {
+		this.citySel()
+	}
+	
+	checkIn() {
+		let formNode = this.formNode
+		console.log(formNode)
+		if (formNode.weixin_username == '') {
+			wx.showToast({
+				title: "请输入微信号",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		if (formNode.industries == '') {
+			wx.showToast({
+				title: "请选择行业",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		if (formNode.cities == '') {
+			wx.showToast({
+				title: "请选择行业",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		wx.showToast({
+			title: '信息提交中...',
+			icon: 'loading',
+			duration: 1000000
+		});
+		wepy.login({
+			success: res => {
+				if (res.code) {
+					this.formNode.code = res.code
+					this.$apply()
+					wx.request({
+						url: `${this.$parent.globalData.requestUrl}/user-upgrade`,
+						method: 'POST',
+						header: {
+							Authorization: this.$parent.globalData.token,
+							apikey: this.$parent.globalData.apikey
+						},
+						data: this.formNode,
+						success: data => {
+							wx.hideToast()
+							data = this.$parent.null2str(data)
+							console.log(data)
+							if (data.data.status_code == 200) {
+								wx.showToast({
+									title: '信息提交成功,等待平台审核',
+									icon: 'none',
+									duration: 2000
+								})
+								setTimeout(() => {
+									wx.navigateBack({
+										delta: -1
+									})
+								}, 2000)
+							} else {
+								wx.showToast({
+									title: data.data.message,
+									icon: 'none'
+								})
+							}
+						}
+					})
+				}
+			}
+		})		
+	}
+	// 获取token
+	// getToken() {
+	// 	wx.showToast({
+	// 		title: "信息提交成功,更新本地数据",
+	// 		icon: 'none',
+	// 		duration: 2000
+	// 	})
+	// 	wepy.login({
+	// 		success: res => {
+	// 			if (res.code) {
+	// 				this.code = res.code
+	// 				wx.request({
+	// 					url: `${this.$parent.globalData.requestUrl}/weapp/authorizations`,
+	// 					method: 'POST',
+	// 					header: {
+	// 						apikey: this.$parent.globalData.apikey
+	// 					},
+	// 					data: {
+	// 						// code: '023lQod30DhpUJ11A2f30p07d30lQodH',
+	// 						code: res.code,
+	// 						verification_code: '1234'
+	// 					},
+	// 					success: data => {
+	// 						wx.hideToast()
+	// 						data = this.$parent.null2str(data)
+	// 						console.log(data)
+	// 						if (data.data.status_code == 200) {
+	// 							wx.showToast({
+	// 								title: "更新数据成功",
+	// 								icon: 'none',
+	// 								duration: 2000
+	// 							})
+	// 							let token = `${data.data.token_type} ${data.data.access_token}`
+	// 							this.$parent.globalData.token = token
+	// 							// 用户类型
+	// 							this.userInfo['type'] = data.data.user_type
+	// 							// 邀请码
+	// 							this.userInfo['invitation_code'] = data.data.invitation_code
+	// 							// 是否支付押金
+	// 							this.userInfo['have_margin'] = data.data.have_margin
+	// 							this.$parent.globalData.userInfo = this.userInfo
+	// 							setTimeout(() => {
+  //                 wx.navigateBack({
+  //                   delta: -1
+  //                 })
+	// 							}, 2000)
+	// 						}
+	// 					}
+	// 				})
+	// 			} else {
+	// 				console.log('登录失败！' + res.errMsg)
+	// 			}
+	// 		}
+	// 	})
+	// }
+	// 用户信息获取
+	onGetUserInfo() {
+		// 查看是否授权
+		wx.getSetting({
+			success: res => {
+				if (res.authSetting['scope.userInfo']) {
+					this.userInfoButtonShow = false
+					this.$apply()
+					// 已经授权，可以直接调用 getUserInfo 获取头像昵称
+					wx.getUserInfo({
+						success: res => {
+							let userInfo = res.userInfo
+							console.log(userInfo)
+							userInfo = Object.assign(this.userInfo, res.userInfo)
+							this.$parent.globalData.userInfo = userInfo
+							this.formNode.avatar = userInfo.avatarUrl
+							this.formNode.nickname = userInfo.nickName
+							this.formNode.sex = userInfo.gender
+							this.$apply()
+						}
+					})
+				}
+			}
+		})
+	}
+	// 定位
+	getLocation() {
+		wx.getLocation({
+			type: 'wgs84',   //  默认为 wgs84 返回 gps 坐标，gcj02 返回可用于 wx.openLocation 的坐标
+			desc: '你的位置信息将用于小程序位置接口的效果展示',
+			success: res => {
+				this.longitude = res.longitude
+				this.latitude = res.latitude
+				this.$apply()
+				this.loadCity(this.longitude, this.latitude)
+			},
+			fail: res => {
+				this.longitude = ''
+				this.latitude = ''
+				this.$apply()
+			}
+		})
+	}
+	loadCity(longitude, latitude) {
+		wx.request({
+			url: `https://apis.map.qq.com/ws/geocoder/v1/?location=${latitude},${longitude}&key=${this.$parent.globalData.mapKey}`,
+			data: {},
+			success: (res) => {
+				console.log(res)
+				this.formNode.city = (res.data.result.ad_info.city_code).substring(3,10)
+				this.$apply()
+			}
+		})
+	}
+	// // 获取验证码
+	// runGetCode() {
+	// 	if (this.disabled) {
+	// 		return false
+	// 	}
+	// 	if (this.formNode.phone == '') {
+	// 		wx.showToast({
+	// 			title: "请输入手机号",
+	// 			icon: 'none',
+	// 			duration: 2000
+	// 		});
+	// 		return false
+	// 	}
+	// 	if (this.formNode.phone.length != 11) {
+	// 		wx.showToast({
+	// 			title: "请输入正确的手机号",
+	// 			icon: 'none',
+	// 			duration: 2000
+	// 		});
+	// 		return false
+	// 	}
+	// 	wx.showToast({
+	// 		title: "请求发送中...",
+	// 		icon: 'loading',
+	// 		duration: 10000
+	// 	});
+	// 	this.disabled = true
+	// 	this.$apply()
+	// 	wx.request({
+	// 		url: `${this.$parent.globalData.requestUrl}/verificationCodes`,
+	// 		method: 'POST',
+	// 		header: {
+	// 			'content-type':'application/json',
+	// 			apikey: this.$parent.globalData.apikey
+	// 		},
+	// 		data: {
+	// 			phone: this.formNode.phone
+	// 		},
+	// 		success: data => {
+	// 			wx.hideToast()
+	// 			data = this.$parent.null2str(data)
+	// 			if (data.statusCode == 201) {
+	// 				wx.showToast({
+	// 					title: '验证码发送成功',
+	// 					icon: 'success',
+	// 					duration: 2000
+	// 				});
+	// 				this.formNode.verification_key = data.data.key
+	// 				this.$apply()
+	// 				// 倒计时
+	// 				this.countdown()
+	// 			} else {
+	// 				wx.showToast({
+	// 					title: data.data.msg,
+	// 					icon: 'none'
+	// 				});
+	// 			}
+	// 		}
+	// 	})
+	// }
+	// // 倒计时
+	// countdown() {
+	// 	var currentTime = this.currentTime;
+	// 	this.time = `倒计时${currentTime}秒`
+	// 	this.$apply()
+	// 	var interval = setInterval(() => {
+	// 		this.time = '倒计时' + (currentTime - 1) + '秒'
+	// 		this.$apply()
+	// 		currentTime--
+	// 		if (currentTime <= 0) {
+	// 			clearInterval(interval)
+	// 			this.time = '重新获取'
+	// 			this.currentTime = 60
+	// 			this.disabled = false
+	// 			this.$apply()
+	// 		}
+	// 	}, 1000)
+	// }
+	// 隐藏模态对话框 
+	hideModal() {
+		this.showModal = true
+		this.$apply()
+	}
+	showModalBtn(){
+		this.showModal = false
+		this.$apply()
+	}
+	// 获取行业
+	getIndustry() {
+		wx.request({
+			url: `${this.$parent.globalData.requestUrl}/industries`,
+			header: {
+				authorization: this.$parent.globalData.token,
+				apikey: this.$parent.globalData.apikey
+			},
+			method: 'GET',
+			success: data => {
+				console.log(data)
+				data = this.$parent.null2str(data)
+				if (data.statusCode === 200) {
+					console.log(data.data)
+					let list = data.data.industries
+					console.log('++++++++'+list)
+					for (let i = 0; i < list.length; i++) {
+						list[i]['sel'] = '0'
+					}
+					this.list = list
+					console.log(this.list)
+					this.$apply()
+				} else{
+					console.log(data)
+				}
+			}
+		})
+	}
+	// 行业选择完成处理
+	industrySub() {
+		let list = this.list
+		let industry = ''
+		let industryName = ''
+		for (let i = 0; i < list.length; i++) {
+			if (list[i].sel == '1') {
+				industry += list[i].id
+				industry += ','
+				industryName += list[i].title
+				industryName += ','
+			}
+		}
+		industry = industry.substring(0, industry.length - 1)
+		industryName = industryName.substring(0, industryName.length - 1)
+		this.formNode.industriesName = industryName
+		this.formNode.industries = industry
+		this.showModal = true
+		this.$apply()
+	}
+	citySel() {
+		let cityList = this.$parent.globalData.registeredCityList
+		// if (cityList.length == 0) {
+		// 	return false
+		// }
+		// console.log(cityList)
+		let cities = ''
+		let citiesName = ''
+		for (let i = 0; i < cityList.length; i++) {
+			if (cityList[i].sel == '1') {
+				cities += cityList[i].code
+				cities += ','
+				citiesName += cityList[i].name
+				citiesName += ','
+			}
+		}
+		cities = cities.substring(0, cities.length - 1)
+		citiesName = citiesName.substring(0, citiesName.length - 1)
+		this.formNode.citiesName = citiesName
+		this.formNode.cities = cities
+		this.$apply()
+	}
+}
+</script>
+<style lang="less">
+.check {
+  width: 750rpx;
+  .checkItem {
+    display: flex;
+    justify-content: space-between;
+    padding: 30rpx 30rpx;
+    label {
+			font-size: 30rpx;
+			color: #1F1F1F;
+			font-weight: 600;
+    }
+    input {
+      width: 570rpx;
+			text-align: left;
+    }
+    .placeholder{
+			font-size: 30rpx;
+			color: #333333;
+    }
+  }
+  #verification {
+    width: 300rpx;
+  }
+  .getCode {
+    font-size: 22rpx;
+    color: #F42652;
+    border: 2rpx solid #F42652;
+    padding: 6rpx 14rpx;
+    border-radius: 16rpx;
+	}
+	.moveInto{
+		position: fixed;
+		bottom: 30rpx;
+		left: 50%;
+		margin-left: -300rpx;
+		width: 600rpx;
+		padding: 26rpx 0;
+		text-align: center;
+		color: #fff;
+		background: #F42652;
+		border-radius: 10rpx;
+		font-size: 30rpx;
+		// margin: 120rpx auto 0;
+	}
+}
+/* 模态框 */
+  
+.modal-mask { 
+  width: 100%; 
+  height: 100%; 
+  position: absolute; 
+  top: 0; 
+  left: 0; 
+  background: #fff; 
+  opacity: 1; 
+  overflow: hidden; 
+  z-index: 9000; 
+}
+.modal-dialog { 
+  width: 710rpx; 
+  padding: 0 20rpx;
+  overflow: hidden; 
+  position: absolute; 
+  left: 0; 
+  right: 0;
+  top: 0;
+  margin: 0 auto; 
+  z-index: 9999; 
+	background: rgba(255, 255, 255, 1); 
+	height: 100vh;
+	border-radius: 5rpx; 
+	.title{
+		width: 690rpx;
+		height: auto;
+		padding: 30rpx;
+		font-size: 30rpx;
+		font-weight: 600;
+		color: #1F1F1F;
+	}
+	.list{
+		width: 690rpx;
+		height: auto;
+		padding: 30rpx;
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		flex-direction: row;
+		flex-wrap: wrap;
+		view{
+			margin: 10rpx;
+			color: #1F1F1F;
+			font-size: 30rpx;
+			// font-weight: 600;
+			padding: 20rpx 30rpx;
+			background-color: #F7F7F7;
+			border-radius: 100rpx;
+		}
+		.active{
+			color: #fff;
+			background-color: #F42652;
+		}
+	}
+	.showCon{
+		width: 580rpx;
+		height: 445rpx;
+	}
+}
+.sub{
+	z-index: 99999999999999999999999999999999;
+}
+</style>

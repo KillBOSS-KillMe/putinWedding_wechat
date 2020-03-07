@@ -1,0 +1,291 @@
+<template>
+	<view class="meIssuePos">
+		<view class="nav">
+			<text class="{{1 == currentIndex ? 'cur' : ' '}}" @tap='titleClick' data-idx='1'>发布的服务</text>
+			<text class="{{3 == currentIndex ? 'cur' : ' '}}" @tap='titleClick' data-idx='3'>发布的套餐</text>
+			<text class="{{2 == currentIndex ? 'cur' : ' '}}" @tap='titleClick' data-idx='2'>同行的互换</text>
+		</view>
+		<view class="meIssuePosList" current='{{currentIndex}}' wx:if='{{currentIndex==1}}'>
+			<repeat for="{{list}}" item="item">
+				<view class="item" @tap="goDetail" data-id="{{item.id}}">
+					<image src='{{requestImgUrl+item.images[0].path}}'>
+					<view class="meIssueUserInfo">
+						<view class="itemHead">
+							<text class="title">{{item.title}}</text>
+						</view>
+						<text class="content">{{item.description}}</text>
+						<view class="itemBootm">
+							<text class="time">{{item.time_start}}~{{item.time_end}}</text>
+							<!-- <text class="address">￥{{item.price}}</text> -->
+							<text class="address" wx:if="{{userInfo.type == 'merchant'}}">￥{{item.peer_price}}</text>
+							<text class="address" wx:if="{{userInfo.type != 'merchant'}}">￥{{item.market_price}}</text>
+						</view>
+					</view>
+				</view>
+			</repeat>
+			<view wx:if='{{list.length == 0}}' class="none">
+        <icon class="iconfont iconc-kongzhuangtai"></icon>
+        <text>没有找到相关信息</text>
+      </view>
+		</view>
+		<view class="meIssuePosList" current='{{currentIndex}}' wx:if='{{currentIndex==2}}'>
+			<repeat for="{{list}}" item="item">
+				<view class="item">
+					<view class="meIssueUserInfo" style="width:690rpx;">
+						<view class="itemHead">
+							<text class="title">{{item.title}}</text>
+						</view>
+						<text class="content">{{item.content}}</text>
+					</view>
+				</view>
+			</repeat>
+			<view wx:if='{{list.length == 0}}' class="none">
+        <icon class="iconfont iconc-kongzhuangtai"></icon>
+        <text>没有找到相关信息</text>
+      </view>
+		</view>
+
+		<view class="meIssuePosList" current='{{currentIndex}}' wx:if='{{currentIndex==3}}'>
+			<repeat for="{{list}}" item="item">
+				<view class="item" @tap="goMoreDetail" data-id="{{item.id}}">
+					<image src='{{requestImgUrl+item.title_image}}'>
+					<view class="meIssueUserInfo">
+						<view class="itemHead">
+							<text class="title">{{item.title}}</text>
+						</view>
+						<text class="content">{{item.description}}</text>
+						<view class="itemBootm">
+							<text class="time">{{item.time_start}}~{{item.time_end}}</text>
+
+							<text class="address" wx:if="{{userInfo.type == 'merchant'}}">￥{{item.peer_price}}</text>
+							<text class="address" wx:if="{{userInfo.type != 'merchant'}}">￥{{item.market_price}}</text>
+							<!-- <text class="address">￥{{item.price}}</text> -->
+						</view>
+					</view>
+				</view>
+			</repeat>
+			<view wx:if='{{list.length == 0}}' class="none">
+        <icon class="iconfont iconc-kongzhuangtai"></icon>
+        <text>没有找到相关信息</text>
+      </view>
+		</view>
+		<!-- <view class="add" data-id="{{currentIndex}}" @tap="add">添加</view> -->
+		<cal></cal>
+	</view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import Call from '../components/call' // 客服
+export default class MeIssuePos extends wepy.page {
+  config = {
+    navigationBarTitleText: '我的发布'
+	}
+	components = {
+		cal: Call
+	}
+  data = {
+    list: [],
+		currentIndex: 1,
+		userInfo: {},
+		current_page: 1,
+		last_page: 0,
+		requestImgUrl: ''
+	}
+	titleClick (e) {
+		this.currentIndex = e.currentTarget.dataset.idx
+    this.current_page=1
+    this.getList()
+    this.list = []
+    this.$apply()
+	}
+	methods = {
+		add(e) {
+			console.log(e.currentTarget.dataset.id)
+			if(e.currentTarget.dataset.id == '1') {
+				this.$navigate(`/pages/postProvide`)
+				return false
+			}
+			if(e.currentTarget.dataset.id == '2') {
+				this.$navigate(`/pages/postChange`)
+				return false
+			}
+			if(e.currentTarget.dataset.id == '3') {
+				this.$navigate(`/pages/postProvideMore`)
+				return false
+			}
+			this.$apply()
+		},
+		goDetail(e) {
+			console.log(e.currentTarget.dataset.id)
+			this.$navigate(`/pages/productDetail?id=${e.currentTarget.dataset.id}`)
+		},
+		goMoreDetail(e) {
+			console.log(e.currentTarget.dataset.id)
+			this.$navigate(`/pages/postMoreDetail?id=${e.currentTarget.dataset.id}`)
+		}
+	}
+	onLoad() {
+		this.userInfo = this.$parent.globalData.userInfo
+		this.requestImgUrl = this.$parent.globalData.requestImgUrl
+	}
+	onShow() {
+		this.list = []
+		this.getList()
+		this.$apply
+	}
+	getList() {
+		let url = ''
+		if(this.currentIndex == 1) {
+			url = `/merchant/services`
+		} else if (this.currentIndex == 2) {
+			url = `/merchant/peerswaps`
+		} else if (this.currentIndex == 3) {
+			url = `/merchants/bundles`
+		}
+		console.log(url)
+		wx.showToast({
+			title: "数据加载...",
+			icon: 'loading',
+			duration: 1000000
+		});
+		wx.request({
+			url: `${this.$parent.globalData.requestUrl}${url}`,
+			method: 'GET',
+			header: {
+				Authorization: this.$parent.globalData.token,
+				apikey: this.$parent.globalData.apikey
+			},
+			data: {
+				page: this.current_page,
+        page_size: 20
+			},
+			success: data => {
+				console.log(data)
+				wx.hideToast()
+				data = this.$parent.null2str(data)
+				if (data.data.status_code == 200) {
+					console.log(data.data.data)
+					if (data.data.data.length == 0) {
+						wx.showToast({
+							title: '没有更多数据',
+							icon: 'none',
+							duration: 2000
+						})
+					}
+					let list = data.data.data.data
+					if (this.currentIndex == 1) {
+						for (let i = 0; i < list.length; i++) {
+							list[i].time_start = this.$parent.transformTime(parseInt(list[i].time_start) * 1000).split(' ')[0]
+							list[i].time_end = this.$parent.transformTime(parseInt(list[i].time_end) * 1000).split(' ')[0]
+						}
+					}
+					this.list= this.list.concat(list)
+					// 当前页码
+					this.current_page = data.data.data.current_page
+					// 总页码
+					this.last_page = data.data.data.last_page
+					this.$apply()
+				}
+			}
+		})
+	}
+	// 下拉加载
+	onReachBottom() { 
+		this.current_page++
+		this.getList()
+	}
+}
+</script>
+<style lang="less">
+.meIssuePos{
+	width: 750rpx;
+	.nav{
+		width: 690rpx;
+		padding: 0 30rpx;
+		display: flex;
+		justify-content: space-around;
+		margin: 10rpx 0 10rpx;
+		border-bottom: 10rpx solid #f8f8f8;
+		text{
+			padding: 30rpx 0;
+			color: #999999;
+			font-size: 32rpx;
+			font-weight: 600;
+			text-align: center;
+		}
+		.cur{
+			color: #1F1F1F;
+			// border-bottom: 4rpx solid #F42652;
+		}
+	}
+	.meIssuePosList{
+		width: 750rpx;
+		// padding:0 30rpx 30rpx;
+		.item{
+			// margin-bottom: 40rpx;
+			display: flex;
+			justify-content: space-between;	
+			align-content: space-between;
+			padding: 30rpx;
+			border-bottom: 10rpx solid #f8f8f8;
+			image{
+				width:196rpx;
+				height: 196rpx;
+				border-radius: 10rpx
+			}
+			.meIssueUserInfo{
+				width: 470rpx;
+				.itemHead{
+					display: flex;
+					justify-content: space-between;
+					.title{
+						color: #1F1F1F;
+						font-size: 30rpx;
+						font-weight: 600
+					}
+				}
+				.content{
+					font-size: 28rpx;
+					color: #333333;
+					text-overflow: ellipsis;
+					white-space: normal;
+					overflow: hidden;
+					display: -webkit-box;
+					// -webkit-line-clamp: 2;
+					-webkit-box-orient: vertical;
+					margin: 16rpx 0 20rpx;
+				}
+				.itemBootm{
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					.address{
+						font-size: 36rpx;
+						font-weight: 600;
+						color: #F42652;
+					}
+					.time{
+						font-size: 24rpx;
+						color: #666666;
+					}
+				}
+			}
+		}
+	}
+}
+.add{
+  width: 94rpx;
+  height: 94rpx;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 28rpx;
+  line-height: 94rpx;
+  text-align: center;
+	background: #F42652;
+	position: fixed;
+	right: 20rpx;
+	bottom:490rpx;
+	font-weight: 600;
+}
+</style>

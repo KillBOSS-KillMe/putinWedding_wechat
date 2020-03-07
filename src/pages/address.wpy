@@ -1,0 +1,172 @@
+<template>
+  <view>
+    <view class="cityList">
+      <repeat for="{{cityNode}}" item="item">
+        <view class="item">
+          <view class="name">{{item.letter}}</view>
+          <view class="cityName">
+            <repeat for="{{item.data}}" item="sonItem" index="sonindex">
+              <view class="cityItem {{sonItem.sel == '1' ? 'active' : ''}}" data-sel="{{sonItem.sel}}" data-index="{{index}}" data-sonindex="{{sonindex}}" data-cityname="{{sonItem.name}}" @tap="citySel">{{sonItem.name}}</view>
+            </repeat>
+          </view>
+        </view>
+      </repeat>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  import cityData from '../mixins/cityData'
+  export default class Address extends wepy.page {
+    config = {
+      navigationBarTitleText: '定位'
+    }
+    components = {
+    }
+
+    mixins = [cityData]
+
+    data = {
+      userInfo: null,
+      cityNode: [],
+      searchList: []
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      // 底部导航跳转
+      goPage (url, evt) {
+        // 销毁当前页{跳转}
+        this.$redirect(url)
+      },
+      citySel(e) {
+        // 点击城市
+        let sel = e.currentTarget.dataset.sel
+        let index = e.currentTarget.dataset.index
+        let sonindex = e.currentTarget.dataset.sonindex
+        if (sel == '1') {
+          this.cityNode[index].data[sonindex].sel = '0'
+        } else {
+          this.cityNode[index].data[sonindex].sel = '1'
+        }
+        this.$apply()
+      },
+      searchRun(e) {
+        // 搜索执行
+        // 获取搜索内容
+        if (e.detail.value == '') {
+          this.searchList = []
+          return ''
+        }
+        this.getSearchList(e.detail.value)
+      }
+    }
+
+    events = {
+
+    }
+
+    onLoad() {
+      console.log(this.allCityNode)
+      this.$parent.globalData.cityGather = ''
+      this.userInfo = this.$parent.globalData.userInfo
+      this.getCityList()
+    }
+    onUnload() {
+      let cityGather = ''
+      let cityNode = this.cityNode
+      for (let i = 0; i < cityNode.length; i++) {
+        for (let y = 0; y < cityNode[i].data.length; y++) {
+          if (cityNode[i].data[y].sel == '1') {
+            cityGather += cityNode[i].data[y].name
+            cityGather += '|'
+          }
+        }
+      }
+      cityGather = cityGather.substring(0, cityGather.length - 1)
+      this.$parent.globalData.cityGather = cityGather
+      
+    }
+    getSearchList(search) {
+      // 获取搜索结果
+      // 执行搜索
+      let i = 0
+      let cityNode = this.cityNode
+      let searchList = []
+      let y = 0
+      for (i in cityNode) {
+        for (y in cityNode[i].cityList) {
+          if (cityNode[i].cityList[y].cityName.match(search)) {
+            searchList.push(cityNode[i].cityList[y])
+          }
+        }
+      }
+      this.searchList = searchList
+    }
+    // 获取城市列表
+    getCityList() {
+      wx.showToast({
+        title: '拼命加载中...',
+        icon: 'loading',
+        duration: 1000000
+      })
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/auth/city_lists`,
+        method: 'GET',
+        header: {
+          Authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        data: {},
+        success: data => {                                                                 
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          if (data.data.code == 8888) {
+            let cityNode = data.data.data
+            for (let i = 0; i < cityNode.length; i++) {
+              for (let y = 0; y < cityNode[i].data.length; y++) {
+                cityNode[i].data[y] = {name: cityNode[i].data[y], sel: '0'}
+              }
+            }
+            this.cityNode = cityNode
+            this.$apply()
+          }
+        }
+      })
+    }
+  }
+</script>
+<style lang="less">
+  .cityList{
+    width: 690rpx;
+    padding: 0 30rpx;
+  }
+  .name{
+    width: 690rpx;
+    font-size: 40rpx;
+    font-weight: 600;
+    color: #979797;
+    height: 60rpx;
+    line-height: 60rpx;
+  }
+  .cityItem{
+    background-color: #f7f7f7;
+    font-size: 30rpx;
+    color: #343434;
+    padding: 20rpx 30rpx;
+    display: inline-block;
+    margin: 10rpx;
+    border-radius: 90rpx;
+  }
+  .searchList{
+    margin-top: 30rpx;
+  }
+  .active{
+    background-color: #F42652;
+    color: #fff;
+  }
+</style>

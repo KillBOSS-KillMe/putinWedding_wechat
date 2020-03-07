@@ -1,0 +1,194 @@
+<template>
+  <view>
+    <scroll-view scroll-y scroll-top={{scrollTop}} >
+      <view class="cityItem selCityShow">
+        {{sonItem.fullName}}
+        <view>
+          当前城市：<text>{{thisCity}}</text>
+        </view>
+        <view>
+          定位城市：<text>{{positionCity}}</text>
+        </view>
+      </view>
+      <view class="cityList">
+        <repeat for="{{cityNode}}" item="item">
+          <view class="item">
+            <view class="name">{{item.title}}</view>
+            <repeat for="{{item.data}}" item="sonItem" index="sonindex">
+              <view class="cityItem {{sonItem.sel == '1' ? 'active' : ''}}" data-code="{{sonItem.code}}" data-index="{{index}}" data-sonindex="{{sonindex}}" @tap="citySel">{{sonItem.fullName}}</view>
+            </repeat>
+          </view>
+        </repeat>
+      </view>
+    </scroll-view>
+    <view class='rightNav'>
+      <view wx:for="{{rightNav}}" wx:key="index" data-key="{{item}}" @tap="setScrollTop">
+        <text class='item_name'>{{item}}</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  export default class Position extends wepy.page {
+    config = {
+      navigationBarTitleText: '定位'
+    }
+    components = {
+    }
+
+    mixins = []
+
+    data = {
+      userInfo: null,
+      cityNode: [],
+      searchList: [],
+      thisCity: '暂无定位信息',
+      positionCity: '尚未选择',
+      winHeight: 0,
+      winWidth: 0,
+      scrollTop: 0,
+      rightNav: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      citySel(e) {
+        // 点击城市
+        let index = e.currentTarget.dataset.index
+        let sonindex = e.currentTarget.dataset.sonindex
+        this.$parent.globalData.positionCity = this.cityNode[index].data[sonindex].fullName
+        this.$parent.globalData.formCity = this.cityNode[index].data[sonindex]
+        wx.navigateBack({
+          delta: -1
+        })
+      },
+      searchRun(e) {
+        // 搜索执行
+        // 获取搜索内容
+        if (e.detail.value == '') {
+          this.searchList = []
+          return ''
+        }
+        this.getSearchList(e.detail.value)
+      },
+      setScrollTop(e) {
+        //获取当前点击的key值
+        var key = e.currentTarget.dataset.key
+        var scrollTop = 0;
+        let cityNode = this.cityNode
+        let size = 45.5
+        for (let i = 0; i < cityNode.length; i++) {
+          if (cityNode[i].title != key) {
+            scrollTop += size
+            for (let item = 0; item <= cityNode[i].data.length; item++) {
+              scrollTop += size
+            }
+          } else if (cityNode[i].title == key) {
+            this.scrollTop = scrollTop
+            break
+          }
+        }
+        this.$apply()
+      }
+    }
+
+    events = {
+
+    }
+
+    onLoad() {
+      // 获取屏幕的高度
+      var sysInfo = wx.getSystemInfoSync();
+      this.winHeight = sysInfo.windowHeight;
+      this.winWidth = sysInfo.windowWidth; 
+
+
+      this.positionCity = this.$parent.globalData.positionCity
+      this.thisCity = this.$parent.globalData.thisCity
+      this.$apply()
+      // 全国省城市
+      this.getRegions()
+    }
+    // 全国省城市
+    getRegions() {
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/regions`,
+        method: 'GET',
+        header: {
+          Authorization: this.$parent.globalData.token,
+          Accept: this.$parent.globalData.apikey
+        },
+        data: {
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.log(data)
+          let list = data.data.city_list
+          let cityNode = []
+          for(let key in list){
+            cityNode.push({
+              title: key,
+              data: list[key]
+            })
+          }
+          this.cityNode = cityNode
+          this.$apply()
+        }
+      })
+    }
+  }
+</script>
+<style lang="less">
+  scroll-view{
+    height: 100vh;
+  }
+  .name{
+    width: 690rpx;
+    padding: 30rpx;
+    font-size: 40rpx;
+    font-weight: 600;
+    color: #000;
+    font-size: 25rpx;
+    background-color: #EEEEEE;
+  }
+  .cityItem {
+    width: 690rpx;
+    padding: 30rpx;
+    font-size: 23rpx;
+    color: #303743;
+    border-top: 1rpx solid #B5B5B5;
+    text{
+      font-weight: 600;
+      color: #278ADD;
+    }
+  }
+  .selCityShow{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .searchList{
+    margin-top: 30rpx;
+  }
+  .active{
+    background-color: #F42652;
+    color: #fff;
+  }
+  .rightNav{
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 50rpx;
+    text-align: center;
+    view{
+      height: 40rpx;
+    }
+  }
+</style>

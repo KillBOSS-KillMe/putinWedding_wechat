@@ -1,0 +1,526 @@
+<template>
+<view>
+  <view>
+    <view class="item">
+      <label>标题</label>
+      <input type="text" @input="getSetData" data-name="title" placeholder="请输入标题" />
+    </view>
+    <view class="item">
+      <label>描述</label>
+      <textarea @input="getSetData" data-name="description" placeholder="请输入服务描述"></textarea>
+    </view>
+    <view class="item">
+      <view>
+        <label>套餐价</label>
+        <input type="number" data-name="price" @input="getSetData" placeholder="请输入价格" />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <button @tap="selectAdd" class="selectAdd">选择添加套餐</button>
+    <view class="addItem">
+      <repeat for="{{formNode.services}}" item="item">
+         <view class="addList">
+           <view class="addListTitle">
+              <text class="addTitle">{{item.service_title}}</text>
+              <text class="addTitle" style=" color: #F42652" @tap="delList" data-id="{{index}}">删除</text>
+           </view>
+          <view>
+            <view class="addNumber">
+              <label>数量</label>
+              <input type="number" placeholder="请选择数量({{item.amount}})" @input="getSetSonData" data-index="{{index}}" data-name="amount" />
+            </view>
+            <view class="addNumber" style=" align-content: initial; align-items: initial">
+              <label>描述</label>
+              <textarea placeholder="请输入描述" @input="getSetSonData" value="" data-index="{{index}}" data-name="description"></textarea>
+            </view>
+          </view>
+        </view>
+      </repeat>
+     
+    </view>
+
+    <cal/>
+  </view>
+  <view class="sub">
+    <view @tap='sub'>发布</view>
+  </view>
+</view>
+  
+</template>
+
+<script>
+  import wepy from 'wepy'
+  import check from '../mixins/check' // 验证
+  import Call from '../components/call' // 客服
+  export default class PostProvideMore extends wepy.page {
+    config = {
+      navigationBarTitleText: '发布套餐'
+    }
+    components = {
+      cal: Call
+     }
+
+    mixins = [check]
+
+    data = {
+      userInfo: null,
+      formNode: {
+        title: '',           // 标题
+        description: '',     // 描述
+        price: '',           // 套餐价
+        services: []
+      },
+      requestImgUrl: '',
+      moreList: {}
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      // 表单数据获取
+      getSetData(e) {
+        let formNode = this.formNode
+        let name = e.currentTarget.dataset.name
+        let value = e.detail.value
+        formNode[name] = value
+        this.formNode = formNode
+        console.log(this.formNode)
+        this.$apply()
+      },
+      getSetSonData(e){
+        let formNode = this.formNode
+        let index = e.currentTarget.dataset.index
+        let name = e.currentTarget.dataset.name
+        let value = e.detail.value
+        if (name == "amount") {
+          if (value > formNode.services[index].newAmount) {
+            wx.showToast({
+              title: '数量不能大于原数据',
+              icon: 'none'
+            })
+            return ''
+          }
+        }
+        formNode.services[index][name] = value
+
+        this.formNode = formNode
+        this.$apply()
+      },
+      // 选择套餐
+      selectAdd() {
+        this.$navigate(`/pages/more`)
+        this.$apply()
+      },
+      // 删除
+      delList(e) {
+        let index = e.currentTarget.dataset.id
+        console.log(this.formNode.services,'+++++++++++++')
+        this.formNode.services.splice(index,1)
+        console.log(this.formNode.services,'++++++')
+        this.$parent.globalData.moreList = this.formNode.services
+      }
+    }
+
+    events = {
+
+    }
+
+    onLoad(e) {
+      this.requestImgUrl = this.$parent.globalData.requestImgUrl
+      this.$apply()
+    }
+    onShow() {
+      this.moreSel()
+    }
+    moreSel() {
+      let moreList = this.$parent.globalData.moreList
+      let formNode = this.formNode
+      console.log(moreList)
+      formNode.services = []
+      for (let i = 0; i < moreList.length; i++) {
+        formNode.services.push({
+          amount: moreList[i].amount,
+          newAmount: moreList[i].amount,
+          description: moreList[i].description,
+          service_id: moreList[i].id,
+          id: moreList[i].id,
+          service_title: moreList[i].title,
+        })
+      }
+      console.log(this.formNode)
+      this.formNode = formNode
+      this.$apply()
+    }
+    //发布
+    sub() {
+      let formNode = this.formNode
+      console.log(formNode)
+      if (formNode.title == '') {
+        wx.showToast({
+          title: '请输入标题',
+          icon: 'none'
+        })
+        return
+      }
+      if (formNode.description == '') {
+        wx.showToast({
+          title: '请输入描述',
+          icon: 'none'
+        })
+        return
+      }
+      if (formNode.price == '') {
+        wx.showToast({
+          title: '请输入价格',
+          icon: 'none'
+        });
+        return
+      }
+      if (formNode.services == '') {
+        wx.showToast({
+          title: '请选择套餐类型',
+          icon: 'none'
+        })
+        return
+      }
+      wx.showToast({
+        title: '发布中...',
+        icon: 'loading',
+        duration: 1000000
+      });
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/merchant/bundle_send`,
+        method: 'POST',
+        header: {
+          Authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        data: formNode,
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          if (data.data.status_code == 201) {
+            wx.showToast({
+              title: "服务已提交平台审核",
+              icon: 'none',
+              duration: 2000
+            })
+            setTimeout(() => {
+              this.$navigate(`/pages/index`)
+            }, 2000)
+          } else {
+            wx.showToast({
+              title: data.data.message,
+              icon: 'none'
+            })
+          }
+        }
+      })
+      this.$apply
+    }
+  }
+</script>
+<style lang="less">
+  .com{
+    padding-bottom: 120rpx;
+  }
+  .item{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    // align-items: center;
+    justify-content: space-between;
+    view{
+      width: 660rpx;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    label{
+      width: 120rpx;
+      padding-right: 20rpx;
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1F1F1F;
+    }
+    text{
+      width: 500rpx;
+      font-size: 30rpx;
+      color: #333;
+    }
+    icon{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30rpx;
+      height: 30rpx;
+      font-size: 30rpx;
+      color: #1F1F1F;
+    }
+    input{
+      width: 552rpx;
+    }
+    textarea{
+      width: 530rpx;
+      height: 160rpx;
+      padding: 10rpx;
+      border-radius: 10rpx;
+      border: 1rpx solid #DFDFDF;
+    }
+  }
+  .title{
+    width: 690rpx;
+    height: auto;
+    padding: 30rpx;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1F1F1F;
+    text{
+      font-size: 28rpx;
+      font-weight: 500;
+      color: #999999;
+    }
+  }
+   .imgList{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    view{
+      position: relative;
+    }
+    .iconbuoumaotubiao20{
+      position: absolute;
+      right: 9rpx;
+      top: -20rpx;
+      color: #F42652;
+    }
+    .iconchuanzhaopian{
+      font-size: 214rpx;
+      height: 214rpx;
+      width: 214rpx;
+    }
+    image{
+      width: 214rpx;
+      height: 214rpx;
+      margin: 10rpx 21rpx 10rpx 0;
+      border-radius: 10rpx;
+    }
+    
+  }
+  .imgList view:last-of-type>image{
+    margin-right: 0;
+  }
+  .button{
+    margin-bottom: 220rpx;
+  }
+  map{
+    width:690rpx;
+    padding:10rpx 30rpx;
+    height:690rpx;
+  }
+.modalBox{
+  width: 100%;
+  font-size: 32rpx;
+}
+.box{
+  margin: 0 auto;
+  width: 630rpx;
+}
+.calendarTitleh1{
+  position: relative;
+  width: 100%;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1F1F1F;
+  view{
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+.calendarTitle{
+  width: 100%;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #1F1F1F;
+  view{
+    width: 101.4rpx;
+  }
+  .iconfont{
+    width: 80rpx;
+    height: 80rpx;
+    font-size: 50rpx;
+    color: #999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .iconjiantou_zuo{
+    font-size: 30rpx;
+  }
+}
+.week{
+  display: inline-block;
+  width:90rpx;
+  height: 80rpx;
+  text-align: center;
+  line-height: 80rpx;
+  border-bottom: 1rpx solid #ddd;
+  view{
+    position: relative;
+    background-color: #fff;
+  }
+  
+}
+.timeListDom{
+  width: 710rpx;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: row;
+  flex-wrap: wrap;
+  .items{
+    width: 81.4rpx;
+    height: 70rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 10rpx 10rpx;
+    position: relative;
+    color: #999999;
+    text{
+      position: absolute;
+      top: 5rpx;
+      right: 5rpx;
+      font-size: 20rpx;
+      color: #F42652;
+    }
+  }
+  .noActive{
+    background-color: #EDEDED;
+    color: #999999;
+    text{
+      color: #F42652;
+    }
+  }
+}
+
+.getTime{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  view{
+    margin: 40rpx 0;
+    background-color: #F42652;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #fff;
+    width: 280rpx;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+.newSpecials{
+  margin-bottom: 250rpx;
+  width: 690rpx;
+  height: auto;
+  padding: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  view{
+    background-color: #F42652;
+    width: auto;
+    height: auto;
+    padding: 10rpx 20rpx;
+    font-size: 30rpx;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+textarea {
+  position: initial;
+}
+.addItem{
+  border-top: 3rpx solid #F42652;
+  width: 690rpx;
+  padding: 30rpx 30rpx 200rpx;
+  .addTitle{
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1F1F1F;
+    margin-bottom: 10rpx;
+    display: block;
+  }
+  .addNumber{
+    display: flex;
+    justify-content: space-between;
+    align-content: center;
+    align-items: center;
+    padding: 10rpx 0;
+    margin-bottom: 20rpx;
+    label{
+      color: #1F1F1F;
+      font-size: 30rpx;
+    }
+    input{
+      width: 585rpx;
+      font-size: 30rpx;
+      color: #1F1F1F;
+    }
+  }
+  textarea{
+    width: 545rpx;
+    border:1rpx solid #eee;
+    border-radius: 10rpx;
+    height: 180rpx;
+    padding: 10rpx 20rpx;
+  }
+}
+.selectAdd{
+  background: #F42652;
+  color: #fff;
+  width: 300rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  border: none;
+  font-size: 30rpx;
+  margin: 30rpx auto;
+}
+.addListTitle{
+  display: flex;
+  justify-content: space-between;
+  text{
+    display: block;
+   
+  }
+}
+</style>

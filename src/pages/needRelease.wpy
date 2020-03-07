@@ -1,0 +1,725 @@
+<template>
+	<view class="need-wrap">
+    <view class="item">
+      <label>标题</label>
+      <input type="text" @input="getSetData" data-name="title" placeholder="请输入标题" />
+    </view>
+    <view class="item">
+      <label>描述</label>
+      <textarea @input="getSetData" data-name="description" placeholder="请输入服务描述"></textarea>
+    </view>
+    <view class="item">
+      <view>
+        <label>开始时间</label>
+        <picker mode="multiSelector" data-stater="time_start" bindchange="bindMultiPickerChange" bindcolumnchange="bindMultiPickerColumnChange" value="{{multiIndex}}" range="{{multiArray}}">
+          <input type="text" value="{{formNode.time_start}}" placeholder="请选择开始时间" disabled />
+        </picker>
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <!-- <view class="item">
+      <view>
+        <label>结束时间</label>
+        <picker mode="multiSelector" data-stater="time_end" bindchange="bindMultiPickerChange" bindcolumnchange="bindMultiPickerColumnChange" value="{{multiIndex}}" range="{{multiArray}}">
+          <input type="text" value="{{formNode.time_end}}" placeholder="请选择结束时间" disabled />
+        </picker>
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view> -->
+    <view class="item" @tap="changeCities">
+      <view>
+        <label>城市</label>
+        <input type="text" value="{{formNode.cityShow}}" placeholder="请选择省市区" disabled />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="item">
+      <view>
+        <label>详细地址</label>
+        <input type="text" @input="getSetData" data-name="address" placeholder="请输选择服务区域" />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="sub">
+      <view @tap='sub'>发布</view>
+    </view>
+  </view>
+</template>
+<script>
+const date = new Date()
+const years = []
+const months = []
+const days = []
+const hours = []
+const minutes = []
+
+const monthsTime = parseInt(date.getMonth())
+const daysTime  = parseInt(date.getDate() - 1)
+const hoursTime  = parseInt(date.getHours())
+const minutesTime  = parseInt(date.getMinutes())
+// 获取年
+for (let i = date.getFullYear(); i <= date.getFullYear() + 1; i++) {
+  years.push('' + i)
+}
+// 获取月份
+for (let i = 1; i <= 12; i++) {
+  if (i < 10) {
+    i = '0' + i
+  }
+  months.push('' + i)
+}
+// 获取日期
+for (let i = 1; i <= 31; i++) {
+  if (i < 10) {
+    i = '0' + i
+  }
+  days.push('' + i)
+}
+// 获取小时
+for (let i = 0; i < 24; i++) {
+  if (i < 10) {
+    i = '0' + i
+  }
+  hours.push('' + i)
+}
+// 获取分钟
+for (let i = 0; i < 60; i++) {
+  if (i < 10) {
+    i = '0' + i
+  }
+  minutes.push('' + i)
+}
+import wepy from 'wepy'
+import check from '../mixins/check' // 验证
+export default class NeedRelease extends wepy.page {
+  config = {
+    navigationBarTitleText: '需求发布'
+  };
+  components = {};
+  mixins = [check]
+	data = {
+    multiIndex: [0, monthsTime, daysTime, hoursTime, minutesTime],
+    multiArray: [years, months, days, hours, minutes],
+    userInfo: null,
+    region: ["北京市", "北京市", "东城区"],
+    formNode: {
+      title: '',           // 标题
+      description: '',     // 描述
+      time_start: '',      // 开始时间
+      time_end: '',        // 结束时间
+      province: '1',        // 所在地-省
+      city: '',            // 所在地-市
+      district: '1',        // 所在地-区
+      address: ''          // 所在地-详细地址(可选)
+    }
+	};
+	methods = {
+		// 表单数据获取
+    getSetData(e) {
+      let formNode = this.formNode
+      let name = e.currentTarget.dataset.name
+      let value = e.detail.value
+      formNode[name] = value
+      this.formNode = formNode
+      console.log(this.formNode.address)
+      this.$apply()
+    },
+    // 获取时间日期
+    bindMultiPickerChange(e) {
+      this.multiIndex = e.detail.value
+      const index = this.multiIndex
+      const year = this.multiArray[0][index[0]]
+      const month = this.multiArray[1][index[1]]
+      const day = this.multiArray[2][index[2]]
+      const hour = this.multiArray[3][index[3]]
+      const minute = this.multiArray[4][index[4]]
+      let time = year + '/' + month + '/' + day + ' ' + hour + ':' + minute
+      let sta = e.currentTarget.dataset.stater
+      this.formNode['time_start'] = time
+      this.formNode['time_end'] = time
+      this.$apply()
+    },
+    // 进入城市选择页
+    changeCities() {
+      let url = `/pages/position`
+      this.$navigate(url)
+    }
+	}
+	onLoad(options) {
+    this.$parent.globalData.formCity = null
+  }
+  onShow() {
+    let city = this.$parent.globalData.formCity
+    this.formNode.city = city.code
+    this.formNode.cityShow  = city.fullName
+    this.$apply()
+    // formNode.city = this.$parent.globalData.formCity
+    console.log(city)
+  }
+  //发布
+  sub() {
+    let formNode = this.formNode
+    console.log(formNode)
+    wx.showToast({
+      title: '发布中...',
+      icon: 'loading',
+      duration: 1000000
+    });
+    if (this.check.isNull(formNode.title)) {
+      wx.showToast({
+        title: '请输入标题',
+        icon: 'none'
+      })
+      return
+    }
+    if (this.check.isNull(formNode.description)) {
+      wx.showToast({
+        title: '请输入描述',
+        icon: 'none'
+      })
+      return
+    }
+    let nowTime = new Date().getTime()
+    console.log(nowTime)
+    let time_start = new Date(formNode.time_start).getTime()
+    console.log(time_start)
+    let time_end = new Date(formNode.time_end).getTime()
+    if (this.check.isNull(formNode.time_start)) {
+      wx.showToast({
+        title: '请选择开始时间',
+        icon: 'none'
+      });
+      return
+    }
+    if (nowTime > time_start || nowTime > time_end) {
+      wx.showToast({
+        title: '不能选择过去的时间',
+        icon: 'none'
+      })
+      return false
+    }
+    if (this.check.isNull(formNode.time_end)) {
+      wx.showToast({
+        title: '请选择结束时间',
+        icon: 'none'
+      });
+      return
+    }
+    if (time_start > time_end) {
+      wx.showToast({
+        title: '开始时间不能大于结束时间',
+        icon: 'none'
+      })
+      return false
+    }
+    if (this.check.isNull(formNode.province)) {
+      wx.showToast({
+        title: '请选择地址',
+        icon: 'none'
+      })
+      return
+    }
+    if (this.check.isNull(formNode.address)) {
+      wx.showToast({
+        title: '请填写详细地址',
+        icon: 'none'
+      })
+      return
+    }
+    wx.request({
+      url: `${this.$parent.globalData.requestUrl}/posts/send`,
+      method: 'POST',
+      header: {
+        Authorization: this.$parent.globalData.token,
+        apikey: this.$parent.globalData.apikey
+      },
+      data: formNode,
+      success: data => {
+        wx.hideToast()
+        data = this.$parent.null2str(data)
+        console.log(data)
+        if (data.data.status_code == 201) {
+          wx.showToast({
+            title: "发布成功",
+            icon: 'none',
+            duration: 2000
+          })
+          setTimeout(() => {
+            wx.navigateBack({
+              delta: -1
+            })
+          }, 2000)
+        } else {
+          wx.showToast({
+            title: data.data.message,
+            icon: 'none'
+          })
+        }
+      }
+    })
+    // if (this.check.isNull(formNode.headline)) {
+    //   wx.showToast({
+    //     title: '请输入标题',
+    //     icon: 'none'
+    //   })
+    //   return
+    // }
+    // if (this.check.isNull(formNode.describe)) {
+    //   wx.showToast({
+    //     title: '请输入描述',
+    //     icon: 'none'
+    //   })
+    //   return
+    // }
+    // // if (this.check.isNull(formNode.number)) {
+    // //   wx.showToast({
+    // //     title: '请输入数量',
+    // //     icon: 'none'
+    // //   });
+    // //   return
+    // // }
+    // if (this.calendarData == '') {
+    //   wx.showToast({
+    //     title: '请选择日期',
+    //     icon: 'none'
+    //   })
+    //   return
+    // }
+    // if (this.check.isNull(formNode.price)) {
+    //   wx.showToast({
+    //     title: '请输入同行价',
+    //     icon: 'none'
+    //   })
+    //   return
+    // }
+    // if (this.check.isNull(formNode.bazaarPrice)) {
+    //   wx.showToast({
+    //     title: '请输入市场',
+    //     icon: 'none'
+    //   })
+    //   return
+    // }
+    // // let region=formNode.region[0] + formNode.region[1] + formNode.region[2]
+    // if (this.check.isNull(formNode.getAddres)) {
+    //   wx.showToast({
+    //     title: '请选择地址',
+    //     icon: 'none'
+    //   })
+    //   return
+    // }
+    // if (this.check.isNull(formNode.hotel_image)) {
+    //   wx.showToast({
+    //     title: '请添加图片',
+    //     icon: 'none'
+    //   })
+    //   return
+    // }
+    // this.upformData(formNode)
+  }
+  // 监听picker的滚动事件
+  bindMultiPickerColumnChange(e) {
+    // 获取年份
+    if (e.detail.column === 0) {
+      let chooseYear = this.multiArray[e.detail.column][e.detail.value]
+    }
+    if (e.detail.column === 1) {
+      let num = parseInt(this.multiArray[e.detail.column][e.detail.value])
+      let temp = []
+      if (num === 1 || num === 3 || num === 5 || num === 7 || num === 8 || num === 10 || num === 12) {
+        // 判断31天的月份
+        for (let i = 1; i <= 31; i++) {
+          if (i < 10) {
+            i = '0' + i
+          }
+          temp.push('' + i)
+        }
+        this.multiArray[2] = temp
+      } else if (num === 4 || num === 6 || num === 9 || num === 11) {
+        // 判断30天的月份
+        for (let i = 1; i <= 30; i++) {
+          if (i < 10) {
+            i = '0' + i
+          }
+          temp.push('' + i)
+        }
+        this.multiArray[2] = temp
+      } else if (num === 2) {
+        // 判断2月份天数
+        let year = parseInt(this.chooseYear)
+        if (((year % 400 === 0) || (year % 100 !== 0)) && (year % 4 === 0)) {
+          for (let i = 1; i <= 29; i++) {
+            if (i < 10) {
+              i = '0' + i
+            }
+            temp.push('' + i)
+          }
+          this.multiArray[2] = temp
+        } else {
+          for (let i = 1; i <= 28; i++) {
+            if (i < 10) {
+              i = '0' + i
+            }
+            temp.push('' + i)
+          }
+          this.multiArray[2] = temp
+        }
+      }
+    }
+    var data = {
+      multiArray: this.multiArray,
+      multiIndex: this.multiIndex
+    }
+    data.multiIndex[e.detail.column] = e.detail.value
+    this.setData(data)
+  }
+}
+</script>
+<style lang="less">
+.need-wrap {
+  padding-bottom: 260rpx;
+}
+  .com{
+    padding-bottom: 120rpx;
+  }
+  .item{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    // align-items: center;
+    justify-content: space-between;
+    view{
+      width: 660rpx;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    label{
+      width: 120rpx;
+      padding-right: 20rpx;
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1F1F1F;
+    }
+    text{
+      width: 500rpx;
+      font-size: 30rpx;
+      color: #333;
+    }
+    icon{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30rpx;
+      height: 30rpx;
+      font-size: 30rpx;
+      color: #1F1F1F;
+    }
+    input{
+      width: 552rpx;
+    }
+    textarea{
+      width: 530rpx;
+      height: 160rpx;
+      padding: 10rpx;
+      border-radius: 10rpx;
+      border: 1rpx solid #DFDFDF;
+    }
+  }
+  .title{
+    width: 690rpx;
+    height: auto;
+    padding: 30rpx;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1F1F1F;
+    text{
+      font-size: 28rpx;
+      font-weight: 500;
+      color: #999999;
+    }
+  }
+   .imgList{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    .iconchuanzhaopian{
+      font-size: 214rpx;
+      height: 214rpx;
+      width: 214rpx;
+    }
+    image{
+      width: 214rpx;
+      height: 214rpx;
+      margin: 10rpx 21rpx 10rpx 0;
+      border-radius: 10rpx;
+    }
+    image:nth-child(3n){
+      margin-right: 0;
+    }
+  }
+  .button{
+    margin-bottom: 220rpx;
+  }
+  map{
+    width:690rpx;
+    padding:10rpx 30rpx;
+    height:690rpx;
+  }
+
+
+
+.modalBox{
+  width: 100%;
+  font-size: 32rpx;
+}
+.box{
+  margin: 0 auto;
+  width: 630rpx;
+}
+.calendarTitleh1{
+  position: relative;
+  width: 100%;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1F1F1F;
+  view{
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+.calendarTitle{
+  width: 100%;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #1F1F1F;
+  view{
+    width: 101.4rpx;
+  }
+  .iconfont{
+    width: 80rpx;
+    height: 80rpx;
+    font-size: 50rpx;
+    color: #999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .iconjiantou_zuo{
+    font-size: 30rpx;
+  }
+}
+.week{
+  display: inline-block;
+  width:90rpx;
+  height: 80rpx;
+  text-align: center;
+  line-height: 80rpx;
+  border-bottom: 1rpx solid #ddd;
+  view{
+    position: relative;
+    background-color: #fff;
+  }
+  
+}
+.timeListDom{
+  width: 710rpx;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: row;
+  flex-wrap: wrap;
+  .items{
+    width: 81.4rpx;
+    height: 70rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 10rpx 10rpx;
+    position: relative;
+    color: #999999;
+    text{
+      position: absolute;
+      top: 5rpx;
+      right: 5rpx;
+      font-size: 20rpx;
+      color: #F42652;
+    }
+  }
+  .noActive{
+    background-color: #EDEDED;
+    color: #999999;
+    text{
+      color: #F42652;
+    }
+  }
+  .active{
+    background-color: #F42652;
+    color: #fff;
+    text{
+      color: #fff;
+    }
+  }
+}
+
+.getTime{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  view{
+    margin: 40rpx 0;
+    background-color: #F42652;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #fff;
+    width: 280rpx;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+/* 模态框 */
+  
+.modal-mask { 
+  width: 100%; 
+  height: 100%; 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  background: #000; 
+  opacity: 0.5; 
+  overflow: hidden; 
+  z-index: 9000; 
+}
+.modal-dialog { 
+  width: 710rpx; 
+  padding: 0 20rpx;
+  overflow: hidden; 
+  position: fixed; 
+  left: 0; 
+  right: 0;
+  bottom: 0;
+  margin: 0 auto; 
+  z-index: 9999; 
+  background: rgba(255, 255, 255, 1); 
+  border-radius: 5rpx; 
+} 
+
+
+
+/* 模态框 */
+  
+.modal-mask { 
+  width: 100%; 
+  height: 100%; 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  background: #fff; 
+  opacity: 1; 
+  overflow: hidden; 
+  z-index: 9000; 
+}
+.modal-dialog { 
+  width: 710rpx; 
+  padding: 0 20rpx;
+  overflow: hidden; 
+  position: fixed; 
+  left: 0; 
+  right: 0;
+  top: 0;
+  margin: 0 auto; 
+  z-index: 9999; 
+  background: rgba(255, 255, 255, 1); 
+	border-radius: 5rpx; 
+	.title{
+		width: 690rpx;
+		height: auto;
+		padding: 30rpx;
+		font-size: 30rpx;
+		font-weight: 600;
+		color: #1F1F1F;
+	}
+	.list{
+		width: 690rpx;
+		height: auto;
+		padding: 30rpx;
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		flex-direction: row;
+		flex-wrap: wrap;
+		view{
+			margin: 10rpx;
+			color: #1F1F1F;
+			font-size: 30rpx;
+			// font-weight: 600;
+			padding: 20rpx 30rpx;
+			background-color: #F7F7F7;
+			border-radius: 100rpx;
+		}
+		.active{
+			color: #fff;
+			background-color: #F42652;
+		}
+	}
+	.showCon{
+		width: 580rpx;
+		height: 445rpx;
+	}
+}
+.newSpecials{
+  margin-bottom: 250rpx;
+  width: 690rpx;
+  height: auto;
+  padding: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  view{
+    background-color: #F42652;
+    width: auto;
+    height: auto;
+    padding: 10rpx 20rpx;
+    font-size: 30rpx;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+.specialsItem{
+  border-top: 5rpx solid #F42652;
+  .title{
+    width: auto;
+    padding: 0;
+    color: #F42652;
+    font-size: 30rpx;
+    font-weight: 600;
+    
+  }
+}
+</style>

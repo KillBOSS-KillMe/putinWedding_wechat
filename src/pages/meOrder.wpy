@@ -1,0 +1,779 @@
+<template>
+  <view class="container">
+    <view class="orderTitle">
+      <text class="{{'all' == type ? 'cur' : 'title-sel'}}" bindtap='selOrderType' data-type='all'>全部</text>
+      <text class="{{'1' == type ? 'cur' : 'title-sel'}}" bindtap='selOrderType' data-type='1'>待付款</text>
+      <text class="{{'2' == type ? 'cur' : 'title-sel'}}" bindtap='selOrderType' data-type='2'>已完成</text>
+    </view>
+
+    <!-- 普通用户 -->
+    <view class="orderList" wx:if="{{userInfo.type == 'normal'}}">
+      <repeat for="{{list}}" item="item">
+        <view>
+          <view class="flex orderListTitle">
+            <view>订单号 {{item.order_no}}
+              <text style="color: #F42652">{{item.pay_type_text}}</text>
+            </view>
+          </view>
+          <view class="orderContent display">
+            <image src="{{requestImgUrl + item.items[0].service.images[0].path}}">
+            <view class="orderCount">
+              <view class="orderTimeInfo">
+                <text class="name">{{item.items[0].service.title}}</text>
+                <text style="color: #F42652">{{item.accept_status}}</text>
+              </view>
+              <text class="performance">{{item.content}}</text>
+              <view class="totaol">租用时间：<text>{{item.reservation_time_start}}~{{item.reservation_time_start}}</text></view>
+              <view class="arrears statPay" wx:if="{{item.pay_type=='full' && item.payment_status == 'waiting'}}">
+                <view>
+                  已付<text>0￥</text>
+                </view>
+                <view>
+                  待支付<text>{{item.total_amount}}￥</text>
+                </view>
+              </view>
+              <view class="arrears statPay" wx:if="{{item.pay_type=='deposit' && item.payment_status == 'waiting'}}">
+                <view>
+                  待付押金<text>{{item.deposit}}￥</text>
+                </view>
+                <view>
+                  尾款<text>{{item.balance}}￥</text>
+                </view>
+              </view>
+              <view class="arrears statPay" wx:if="{{item.pay_type=='deposit' && item.payment_status == 'balance'}}">
+                <view>
+                  押金<text>{{item.deposit}}￥</text>
+                </view>
+                <view>
+                  待付尾款<text>{{item.balance}}￥</text>
+                </view>
+              </view>
+            </view>
+          </view>
+          <view class="display orderListBottom">
+            <view class="del" wx:if="{{item.type=='1'}}">
+              <text>删除</text>
+            </view>
+            <view class="orderType">
+              <text @tap='goDetail' data-type="user" data-id='{{item.id}}' data-type='show'>查看</text>
+              <text @tap='operatingUser' data-id='{{item.id}}' data-index="{{index}}" data-type='0' wx:if="{{item.order_status=='0' && item.is_accept == 1}}">付全款</text>
+              <text @tap='operatingUser' data-id='{{item.id}}' data-index="{{index}}" data-type='1' wx:if="{{item.order_status=='1' && item.is_accept == 1}}">付押金</text>
+              <text @tap='operatingUser' data-id='{{item.id}}' data-index="{{index}}" data-type='2' wx:if="{{item.order_status=='2' && item.is_accept == 1}}">付尾款</text>
+              <text @tap='operatingUser' data-id='{{item.id}}' data-index="{{index}}" data-type='5' wx:if="{{item.order_status=='5' && item.is_accept == 1}}">确定完成</text>
+            </view>
+          </view>
+        </view>
+      </repeat>
+      <!-- <view class="listNull" wx:if="{{list.length==0}}">暂无数据</view> -->
+      <view wx:if='{{list.length == 0}}' class="none">
+        <icon class="iconfont iconc-kongzhuangtai"></icon>
+        <text>没有找到相关订单信息</text>
+      </view>
+    </view>
+    <!-- 商户/代理 -->
+    <view class="orderList" wx:if="{{userInfo.type != 'normal'}}">
+      <repeat for="{{list}}" item="item">
+        <view>
+          <view class="flex orderListTitle">
+            <view>订单号 {{item.order_no}}
+              <text style="color: #F42652">{{item.pay_type_text}}</text>
+            </view>
+          </view>
+          <view class="orderContent display">
+            <image src="{{requestImgUrl + item.items[0].service.images[0].path}}">
+            <view class="orderCount">
+              <view class="orderTimeInfo">
+                <text class="name">{{item.items[0].service.title}}</text>
+                <text style="color: #F42652">{{item.accept_status}}</text>
+              </view>
+              <text class="performance">{{item.content}}</text>
+              <view class="totaol">租用时间：<text>{{item.reservation_time_start}}~{{item.reservation_time_start}}</text></view>
+              <view class="arrears statPay" wx:if="{{item.pay_type=='full' && item.payment_status == 'waiting'}}">
+                <view>
+                  已付<text>0￥</text>
+                </view>
+                <view>
+                  待支付<text>{{item.total_amount}}￥</text>
+                </view>
+              </view>
+              <view class="arrears statPay" wx:if="{{item.pay_type=='deposit' && item.payment_status == 'waiting'}}">
+                <view>
+                  待付押金<text>{{item.deposit}}￥</text>
+                </view>
+                <view>
+                  尾款<text>{{item.balance}}￥</text>
+                </view>
+              </view>
+              <view class="arrears statPay" wx:if="{{item.pay_type=='deposit' && item.payment_status == 'balance'}}">
+                <view>
+                  已押金<text>{{item.deposit}}￥</text>
+                </view>
+                <view>
+                  待付尾款<text>{{item.balance}}￥</text>
+                </view>
+              </view>
+            </view>
+          </view>
+          <view class="display orderListBottom">
+            <view class="del" wx:if="{{item.type=='1'}}">
+              <text>删除</text>
+            </view>
+            <view class="orderType">
+              <text @tap='goDetail' data-type="shop" data-id='{{item.id}}' data-type='show'>查看</text>
+              <text @tap='acceptOrder' data-id='{{item.id}}' data-index="{{index}}" data-type='2' wx:if="{{item.is_accept == 0}}">接单</text>
+              <text @tap='operatingShop' data-id='{{item.id}}' data-index="{{index}}" data-type='5' wx:if="{{item.order_status=='0' && item.is_accept == 1}}">催款</text>
+              <text @tap='operatingShop' data-id='{{item.id}}' data-index="{{index}}" data-type='5' wx:if="{{item.order_status=='1' && item.is_accept == 1}}">催押金</text>
+              <text @tap='operatingShop' data-id='{{item.id}}' data-index="{{index}}" data-type='5' wx:if="{{item.order_status=='2' && item.is_accept == 1}}">催尾款</text>
+              <!-- <text @tap='operatingShop' data-id='{{item.id}}' data-index="{{index}}" data-type='5' wx:if="{{item.order_status=='3' && item.is_accept == 1}}">已完成</text> -->
+            </view>
+          </view>
+        </view>
+      </repeat>
+      <!-- <view class="listNull" wx:if="{{list.length==0}}">暂无数据</view> -->
+      <view wx:if='{{list.length == 0}}' class="none">
+        <icon class="iconfont iconc-kongzhuangtai"></icon>
+        <text>没有找到相关订单信息</text>
+      </view>
+    </view>
+    <view class="modal-mask" @tap="hideModal" catchtouchmove="preventTouchMove" wx:if="{{mask}}"></view>
+    <view class="modal-dialog" wx:if="{{mask}}">
+      <text class="payment">支付保证金</text>
+      <text class="price">￥1200</text>
+      <text class="tip">为保证商户与用户间达成信任，商户首次接单需向平台支付保证金，以保证平台、商户、用户三方利益。</text>
+      <button class="goOrder" @tap="marginPay">立即支付</button>
+    </view>
+    <cal></cal>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import Call from '../components/call' // 客服
+export default class MeOrder extends wepy.page {
+  config = {
+    navigationBarTitleText: '需要'
+  };
+  components = {
+    cal:Call
+  };
+
+  mixins = [];
+
+  data = {
+    // merchant 商户
+    // normal   普通用户
+    // dealer   代理
+    userInfo: null,
+    type: 'all',
+    current_page: 1,
+    last_page: 0,
+    list: [],
+    curr: '',
+    cur: '',
+    options: null,
+    requestImgUrl: ''
+  };
+
+  computed = {};
+
+  methods = {
+    // 用户--订单操作时间
+    operatingUser(e) {
+      let type = e.currentTarget.dataset.type
+      let id = e.currentTarget.dataset.id
+      let index = e.currentTarget.dataset.index
+      if (type == 'show') {
+        // 进入订单详情
+        // let url = `/pages/fillOrder?type=${type}&id=${id}`
+        // this.$navigate(url)
+      } else if (type == '0' || type == '1' || type == '2') {
+        // 支付定金，尾款，全款
+        wx.showToast({
+          title: "数据加载...",
+          icon: 'loading',
+          duration: 1000000
+        });
+        wx.request({
+          url: `${this.$parent.globalData.requestUrl}/payment/wechat_pay`,
+          method: 'POST',
+          header: {
+            authorization: this.$parent.globalData.token,
+            apikey: this.$parent.globalData.apikey
+          },
+          data: {
+            order_id: id
+          },
+          success: data => {
+            wx.hideToast()
+            data = this.$parent.null2str(data)
+            console.log(data)
+            let payNode = data.data
+            wx.requestPayment({
+              'timeStamp': payNode.timeStamp,
+              'nonceStr': payNode.nonceStr,
+              'package': payNode.package,
+              'signType': payNode.signType,
+              'paySign': payNode.paySign,
+              'success': data => {
+                wx.hideToast()
+                wx.showToast({
+                  title: "支付成功",
+                  icon: 'success',
+                  duration: 2000
+                });
+                wx.showToast({
+                  title: "订单数据更新...",
+                  icon: 'loading',
+                  duration: 1000000
+                });
+                setTimeout(e => {
+                  wx.hideToast()
+                  this.upDateUser(id, index)
+                }, 2000)
+                
+              },
+              'fail': data => {
+                wx.hideToast()
+                wx.showToast({
+                  title: "充值失败",
+                  icon: 'none',
+                  duration: 2000
+                });
+              }
+            })
+          }
+        })
+      } else {
+        // 修改完成状态
+        wx.showToast({
+          title: "数据加载...",
+          icon: 'loading',
+          duration: 1000000
+        });
+        wx.request({
+          url: `${this.$parent.globalData.requestUrl}/orders/order_complete/${id}`,
+          method: 'GET',
+          header: {
+            authorization: this.$parent.globalData.token,
+            apikey: this.$parent.globalData.apikey
+          },
+          success: data => {
+            wx.hideToast()
+            data = this.$parent.null2str(data)
+            console.log(data)
+            if (data.data.status_code == 200) {
+              wx.showToast({
+                title: "订单状态修改成功",
+                icon: 'none',
+                duration: 2000
+              });
+              this.upDateUser(id, index)
+            }
+          }
+        })
+      }
+    },
+    // 商户--订单操作
+    operatingShop(e) {
+      let id = e.currentTarget.dataset.id
+      let index = e.currentTarget.dataset.index
+      wx.showToast({
+        title: "数据加载...",
+        icon: 'loading',
+        duration: 1000000
+      });
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/merchant/reminders/${id}`,
+        method: 'GET',
+        header: {
+          authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.log(data)
+          if (data.data.status_code == 200) {
+            // 接单成功
+            wx.showToast({
+              title: "催单成功",
+              icon: 'none',
+              duration: 2000
+            })
+          } else if (data.data.status_code == 400) {
+            wx.showToast({
+              title: data.data.message,
+              icon: 'none',
+              duration: 2000
+            })
+          }
+        }
+      })
+    },
+
+    // 商户--接单
+    acceptOrder(e) {
+      if (this.userInfo.have_margin == '0') {
+        wx.showModal({
+          title: '提示',
+          content: '请先支付保证金?',
+          success: res => {
+            if (res.confirm) {
+              // console.log('用户点击确定')
+              // 支付保证金
+              this.marginPay()
+            } else if (res.cancel) {
+              // console.log('用户点击取消')
+            }
+          }
+        })
+        return false
+      }
+      wx.showModal({
+        title: '提示',
+        content: '确认接单？',
+        success: res => {
+          if (res.confirm) {
+            // console.log('用户点击确定')
+            // 接单执行
+            this.runAcceptOrder(e)
+          } else if (res.cancel) {
+            // console.log('用户点击取消')
+          }
+        }
+      })
+      
+    },
+    // 进入订单详情
+    goDetail(e) {
+      let type = e.currentTarget.dataset.type
+      let orderId = e.currentTarget.dataset.id
+      let url = `/pages/meOrderDetail?id=${orderId}&type=${type}`
+      this.$navigate(url)
+    }
+  };
+
+  selOrderType (e) {
+    this.type = e.currentTarget.dataset.type
+    this.current_page = 1
+    this.list = []
+    this.getListData()
+    this.$apply()
+  }
+  events = {};
+
+  onLoad(options) {
+    this.requestImgUrl = this.$parent.globalData.requestImgUrl
+    this.userInfo = this.$parent.globalData.userInfo
+    this.options = options
+    this.type = options.type
+    this.$apply()
+    this.getListData()
+  }
+  // 接单执行
+  runAcceptOrder(e) {
+    wx.showToast({
+      title: "数据加载...",
+      icon: 'loading',
+      duration: 1000000
+    });
+    let id = e.currentTarget.dataset.id
+    let index = e.currentTarget.dataset.index
+    wx.request({
+      url: `${this.$parent.globalData.requestUrl}/orders/accept_order/${id}`,
+      method: 'PUT',
+      header: {
+        authorization: this.$parent.globalData.token,
+        apikey: this.$parent.globalData.apikey
+      },
+      success: data => {
+        wx.hideToast()
+        data = this.$parent.null2str(data)
+        console.log(data)
+        if (data.data.status_code == 200) {
+          // 接单成功
+          wx.showToast({
+            title: "接单成功",
+            icon: 'none',
+            duration: 2000
+          })
+          this.upDateUser(id, index)
+        } else if (data.data.status_code == 400) {
+          wx.showToast({
+            title: data.data.message,
+            icon: 'none',
+            duration: 2000
+          })
+        }
+        // let payNode = data.data
+        
+      }
+    })
+  }
+  // 当前订单更新
+  upDateUser(id, index) {
+    console.log(id, index)
+    wx.showToast({
+      title: "订单数据更新...",
+      icon: 'loading',
+      duration: 1000000
+    });
+    wx.request({
+      url: `${this.$parent.globalData.requestUrl}/users/order_refresh/${id}`,
+      method: 'GET',
+      header: {
+        authorization: this.$parent.globalData.token,
+        apikey: this.$parent.globalData.apikey
+      },
+      success: data => {
+        wx.hideToast()
+        data = this.$parent.null2str(data)
+        console.log(data)
+        if (data.data.status_code == 200) {
+          let newNode = data.data.data
+          this.list[index].is_accept = newNode.is_accept
+          this.list[index].order_status = newNode.order_status
+          this.$apply()
+        } 
+      }
+    })
+  }
+  getListData() {
+    // if (this.type == undefined) {
+    //   this.cur = 1
+    // } else {
+    //   this.cur = this.type
+    // }
+    wx.showToast({
+      title: '数据加载...',
+      icon: 'loading',
+      duration: 1000000
+    })
+    // merchant 商户
+    // normal   普通用户
+    // dealer   代理
+    let url = ''
+    console.log(this.userInfo)
+    if (this.userInfo.type == 'normal') {
+      // 普通用户
+      url = '/user/my_orders'
+    } else {
+      // 商户，代理
+      url = '/merchant/my_orders'
+    }
+    wx.request({
+      url: `${this.$parent.globalData.requestUrl + url}`,
+      method: 'GET',
+      header: {
+        Authorization: this.$parent.globalData.token
+      },
+      data: {
+        page: this.current_page,
+        type : this.type
+      },
+      success: data => {
+        wx.hideToast()
+        data = this.$parent.null2str(data)
+        if (data.data.status_code == 200) {
+          let list = data.data.data.data
+          for (let i = 0; i < list.length; i++) {
+            list[i].reservation_time_end = list[i].reservation_time_end.split(' ')[0]
+            list[i].reservation_time_start = list[i].reservation_time_end.split(' ')[0]
+          }
+          this.list = this.list.concat(list)
+          // 当前页码
+          this.current_page = data.data.data.current_page
+          // 总页码
+          this.last_page = data.data.data.last_page
+          this.$apply()
+        }
+      }
+    })
+  }
+  pay(e) {
+    let type = e.currentTarget.dataset.type
+    let orderId = e.currentTarget.dataset.id
+    // 支付定金
+    if(type===1) {
+      let url = `/pages/fillOrder?type=${type}&id=${orderId}`
+      this.$navigate(url)
+      return false
+    }
+    // 支付尾款
+    if(type === 2) {
+      let url = `/pages/orderPostTail?type=${type}&id=${orderId}`
+      this.$navigate(url)
+      return false
+    }
+     // 确定完成
+    if(type === 4) {
+      let url = `/pages/orderPostConfirm?type=${type}&id=${orderId}`
+      this.$navigate(url)
+      return false
+    }
+    // 订单评价
+    if(type === 5) {
+      let url = `/pages/orderPost?type=${type}&id=${orderId}`
+      this.$navigate(url)
+      return false
+    }
+  }
+  // 下拉加载
+  onReachBottom() {
+    this.current_page++
+    this.getListData()
+  }
+  // 支付押金
+  marginPay() { 
+    wx.showToast({
+      title: '数据加载...',
+      icon: 'loading',
+      duration: 1000000
+    })
+    wx.request({
+      url: `${this.$parent.globalData.requestUrl}/payment/wechat_deposit_pay`,
+      method: 'GET',
+      header: {
+        Authorization: this.$parent.globalData.token
+        // apikey: this.$parent.globalData.apikey
+      },
+      success: data => {
+        wx.hideToast()
+        data = this.$parent.null2str(data)
+        console.clear()
+        console.log(data)
+        if ( data.data.status_code == 200 ) {
+          let payNode = data.data
+          console.log(payNode)
+          wx.requestPayment({
+            'timeStamp': payNode.timeStamp,
+            'nonceStr': payNode.nonceStr,
+            'package': payNode.package,
+            'signType': payNode.signType,
+            'paySign': payNode.paySign,
+            'success': data => {
+              wx.hideToast()
+              wx.showToast({
+                title: "支付成功",
+                icon: 'success',
+                duration: 2000
+              });
+
+              // 数据刷新
+              // // 两秒后返回上一页
+              // setTimeout(e => {
+              //   let url = `/pages/paySuccess`
+              //   this.$navigate(url)
+              // }, 2000)
+              // 更新用户信息
+              this.userInfo.have_margin = 1
+              this.$parent.globalData.userInfo = this.userInfo
+              this.mask = false
+              this.$apply()
+              // setTimeout(e => {
+              //   wx.hideToast()
+              //   // this.upDateUser(id, index)
+              // }, 2000)
+              
+            },
+            'fail': data => {
+              wx.hideToast()
+              wx.showToast({
+                title: "充值失败",
+                icon: 'none',
+                duration: 2000
+              });
+            }
+          })
+        }
+      }
+    })
+  }
+}
+</script>
+<style lang="less">
+.container {
+  border-top: 1rpx solid #eeeeee;
+  width: 750rpx;
+  height: auto;
+}
+.orderTitle {
+  width: 100%;
+  height: 88rpx;
+  display: flex;
+  justify-content: space-around;
+  line-height: 88rpx;
+  .title-sel{
+    font-size: 28rpx;
+    color: #1f1f1f;
+    border-bottom: 5rpx solid transparent;
+  }
+  .cur {
+    color: #f42652;
+    border-bottom: 5rpx solid #f42652;
+    font-size: 28rpx;
+  }
+}
+.show{
+  opacity: 1;
+}
+.hide{
+  opacity: 0
+}
+.flex{
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+}
+.display{
+    display: flex;
+}
+.orderList{
+    width: 86%;
+    margin: 20rpx auto;
+    .orderListTitle>text{
+        font-size: 28rpx;
+        color: #494949;
+    }
+    .orderContent{
+        margin-top: 30rpx;
+        justify-content: space-between;
+        image{
+            width: 180rpx;
+            height: 130rpx;
+            border-radius: 10rpx;
+            overflow: hidden;
+            margin-right: 30rpx;
+        }
+        .type{
+            color: #F42652;
+            font-size: 20rpx;
+            padding: 5rpx 10rpx;
+            border: 1rpx solid #F42652;
+            border-radius: 5rpx;
+            margin-right: 10rpx;
+        }
+        .name{
+            font-size: 30rpx;
+            font-weight: 600;
+            color: #1F1F1F;
+        }
+        .performance{
+            font-size: 24rpx;
+            color: #494949;
+            margin-bottom: 30rpx
+        }
+        .totaol{
+            font-size: 24rpx;
+            color: #494949;
+            text{
+               font-size: 24rpx;
+               color: #494949;
+            }
+        }
+    }
+}
+.orderList>view{
+        margin-bottom: 48rpx;
+}
+.orderListBottom{
+    margin-top: 30rpx;
+    justify-content: space-between;
+    align-items: center;
+    .arrears{
+      color: #494949;
+      width: 400rpx;
+      
+    }
+    .del{
+        color: #999999;
+        font-size: 30rpx;
+    }
+    .orderType>text{
+        padding:10rpx 20rpx;
+        background: #F42652;
+        border-radius: 10rpx;
+        color: #fff;
+        font-size: 30rpx;
+        margin-left: 20rpx
+    }
+}
+.orderCount{
+  width: 430rpx;
+  .statPay{
+    font-size: 25rpx;
+    color: #494949;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text{
+      font-size: 24rpx;
+      color: #F42652;
+    }
+  }
+}
+.orderTimeInfo{
+  margin-bottom: 16rpx;
+  display: flex;
+  justify-content: space-between;
+  text{
+    display: block;
+  }
+}
+.modal-mask { 
+		width: 100%; 
+		height: 100%; 
+		position: fixed; 
+		top: 0; 
+		left: 0; 
+		background: #000; 
+		opacity: 0.5; 
+		overflow: hidden; 
+    z-index: 9000;
+	}
+	.modal-dialog { 
+		width: 670rpx; 
+		padding:40rpx;
+		overflow: hidden; 
+		position: fixed; 
+		left: 0; 
+		right: 0;
+		bottom: 0;
+		margin: 0 auto; 
+		z-index: 9999; 
+		background: rgba(255, 255, 255, 1); 
+    border-radius: 10rpx 10rpx 0 0; 
+    .price{
+      color: #F42652;
+      font-size: 40rpx;
+      font-weight: 600;
+      text-align: center;
+      margin: 30rpx 0;
+    }
+    .tip{
+      color: #333333;
+      font-size: 28rpx;
+      margin-bottom: 50rpx;
+    }
+    text{
+      display: block;
+    }
+    .payment{
+      font-size: 32rpx;
+      color: #333;
+      text-align: center;
+      font-weight: 600;
+    }
+    .goOrder{
+      width: 600rpx;
+      padding: 10rpx 0;
+      text-align: center;
+      margin: 0 35rpx;
+      color: #fff;
+      background-color: #F42652 !important;
+      border-radius: 10rpx;
+      font-size: 32rpx;
+      font-weight: 600
+    }
+  } 
+</style>

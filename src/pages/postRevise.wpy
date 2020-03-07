@@ -1,0 +1,1222 @@
+<template>
+  <view>
+    <view class="item">
+      <label>标题</label>
+      <input type="text" @input="getSetData" data-name="title" placeholder="请输入标题" value="{{formNode.title}}" />
+    </view>
+    <view class="title">
+      <label>服务类型</label>
+      <radio-group class="radio-group" bindchange="radioChange">
+        <repeat for="{{typeList}}" item="item">
+          <radio value="{{item.name}}" checked="{{item.checked}}"/>{{item.value}}
+        </repeat>
+      </radio-group>
+    </view>
+    <view class="item">
+      <label>描述</label>
+      <textarea @input="getSetData" data-name="description" placeholder="请输入服务描述" value="{{formNode.description}}"></textarea>
+    </view>
+    <view class="item" @tap="changeIndustries">
+      <view>
+        <label>选择类型</label>
+        <input type="text" value="{{formNode.industry_name}}" placeholder="请选择服务类型" disabled />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <!-- <view class="item">
+      <view>
+        <label>开始时间</label>
+        <picker mode="multiSelector" data-lv="one" data-stater="time_start" bindchange="bindMultiPickerChange" bindcolumnchange="bindMultiPickerColumnChange" value="{{multiIndex}}" range="{{multiArray}}">
+          <input type="text" value="{{formNode.time_start}}" placeholder="请选择开始时间" disabled />
+        </picker>
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="item">
+      <view>
+        <label>结束时间</label>
+        <picker mode="multiSelector" data-lv="one" data-stater="time_end" bindchange="bindMultiPickerChange" bindcolumnchange="bindMultiPickerColumnChange" value="{{multiIndex}}" range="{{multiArray}}">
+          <input type="text" value="{{formNode.time_end}}" placeholder="请选择结束时间" disabled />
+        </picker>
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view> -->
+    <view class="item">
+      <view>
+        <label>同行价</label>
+        <input type="number" data-name="peer_price" @input="getSetData" placeholder="请输入价格" value="{{formNode.peer_price}}" />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="item">
+      <view>
+        <label>市场价</label>
+        <input type="number" data-name="market_price" @input="getSetData" placeholder="请输入价格" value="{{formNode.market_price}}" />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="item" wx:if="{{formNode.specials.length == 0}}">
+      <view>
+        <label>单价</label>
+        <input type="number" data-name="price" @input="getSetData" placeholder="请输入价格" value="{{formNode.price}}" />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="item" wx:if="{{formNode.specials.length == 0}}">
+      <view>
+        <label>数量</label>
+        <input type="number" data-name="amount" @input="getSetData" placeholder="请输入数量" value="{{formNode.amount}}" />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="item" @tap="newSpecials">
+      <view>
+        <label>添加档期</label>
+        <input type="text" value="{{formNode.service_area_name}}" placeholder="点击进入特殊档期选择" disabled />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="item" @tap="changeCities">
+      <view>
+        <label>服务区域</label>
+        <input type="text" value="{{formNode.serviceArea}}" placeholder="请输选择服务区域" disabled />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="title">
+      上传图片
+      <text>(最多上传3张)</text>
+    </view>
+    <view class="imgList">
+      <repeat for="{{formNode.images}}" item="item">
+        <view>  
+          <icon class="iconfont iconbuoumaotubiao20" @tap="del" data-index="{{index}}" data-id="{{item.id}}"></icon>
+          <image src="{{requestImgUrl+item.path}}" />
+        </view>
+      </repeat>
+      <icon class="iconfont iconchuanzhaopian" @tap="upHotelImgList" wx:if="{{formNode.images.length < 3}}"></icon>
+    </view>
+    <!-- <view class="item newSpecials" @tap="newSpecials">
+      <view>添加特殊档期</view>
+    </view> -->
+    <view class="sub">
+      <view @tap='sub'>发布</view>
+    </view>
+    <view class="modal-mask" @tap="hideModal" catchtouchmove="preventTouchMove" hidden="{{showModal}}"></view>
+		<view class="modal-dialog" hidden="{{showModal}}">
+			<view class="title">选择行业</view>
+			<view class="list">
+				<repeat for="{{list}}" item="item">
+					<view class="{{item.sel == '1'?'active':''}}" data-sel="{{item.sel}}" data-index="{{index}}" @tap="sel">
+						{{item.title}}
+					</view>
+				</repeat>
+			</view>
+			<view class="sub">
+				<view @tap="industrySub">确定</view>
+			</view>
+		</view>
+  </view>
+</template>
+
+<script>
+const date = new Date()
+const years = []
+const months = []
+const days = []
+const hours = []
+const minutes = []
+
+const monthsTime = parseInt(date.getMonth())
+const daysTime  = parseInt(date.getDate() - 1)
+const hoursTime  = parseInt(date.getHours())
+const minutesTime  = parseInt(date.getMinutes())
+// 获取年
+for (let i = date.getFullYear(); i <= date.getFullYear() + 1; i++) {
+  years.push('' + i)
+}
+// 获取月份
+for (let i = 1; i <= 12; i++) {
+  if (i < 10) {
+    i = '0' + i
+  }
+  months.push('' + i)
+}
+// 获取日期
+for (let i = 1; i <= 31; i++) {
+  if (i < 10) {
+    i = '0' + i
+  }
+  days.push('' + i)
+}
+// 获取小时
+for (let i = 0; i < 24; i++) {
+  if (i < 10) {
+    i = '0' + i
+  }
+  hours.push('' + i)
+}
+// 获取分钟
+for (let i = 0; i < 60; i++) {
+  if (i < 10) {
+    i = '0' + i
+  }
+  minutes.push('' + i)
+}
+
+
+
+  import wepy from 'wepy'
+  import check from '../mixins/check' // 验证
+  // 引入SDK核心类
+  import qqmapwx from '../mixins/qqmap-wx-jssdk.min.js'
+  var qqmapsdk
+  export default class PostRevise extends wepy.page {
+    config = {
+      navigationBarTitleText: '修改服务'
+    }
+    components = { }
+
+    mixins = [check]
+
+    data = {
+      multiIndex: [0, monthsTime, daysTime, hoursTime, minutesTime],
+      multiArray: [years, months, days, hours, minutes],
+      userInfo: null,
+      orderId: '',
+      typeList: [
+        {name: 'normal', value: '单品服务', checked: true},
+        {name: 'bundle', value: '优惠套餐', checked: false}
+      ],
+      formNode: {
+        title: '',           // 标题
+        type: 'normal',            // 服务类型
+        description: '',     // 描述
+        industry_name: '',   // 行业id
+        industry_id: '',     // 行业id
+        peer_price: '0',      // 同行价格
+        market_price: '0',    // 市场价格
+        amount: '0',          // 数量
+        price: '0',           // 单价
+        time_start: '',      // 开始时间
+        time_end: '',        // 结束时间
+        serviceArea: '',    // 服务区域(显示)
+        service_area: '',    // 服务区域
+        images: '',
+        specials: [
+        //   {         // 特殊档期
+        //   price: '',         // 价格
+        //   amount: '',        // 数量
+        //   time_start: '',    // 开始时间
+        //   time_end: ''       // 结束时间
+        // }
+        ]
+      },
+      hotelImgList: [],             // 上传图片列表
+      tiemNumSelData: null,
+      step: 1,
+      list: [],
+      showModal: true,
+      calendarData: [],
+      markers: null,
+      productDetail: {},
+      requestImgUrl: ''
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      // 表单数据获取
+      getSetData(e) {
+        let formNode = this.formNode
+        let name = e.currentTarget.dataset.name
+        let value = e.detail.value
+        formNode[name] = value
+        this.formNode = formNode
+        console.log(formNode)
+        this.$apply()
+      },
+      // 表单数据获取
+      getSetSonData(e) {
+        let formNode = this.formNode
+        let name = e.currentTarget.dataset.name
+        let index = e.currentTarget.dataset.index
+        let value = e.detail.value
+        formNode.specials[index][name] = value
+        this.formNode = formNode
+        console.log(formNode)
+        this.$apply()
+      },
+      radioChange(e) {
+        // 服务类型选择
+        this.formNode.type = e.detail.value
+        this.$apply()
+      },
+      getAddress(e) {
+        let formNode = this.formNode
+        let name = e.currentTarget.dataset.name
+        let value = e.detail.value
+        formNode[name] = value
+        this.formNode = formNode
+        this.$apply()
+        // 地图信息显示
+        this.getMapInfo(value)
+      },
+      // 上传图片
+      upHotelImgList() {
+        this.runUpHotelImgList()
+      },
+      //删除图片
+      del(e) {
+        let index = e.currentTarget.dataset.index
+        let images = this.formNode.images
+        let path = images[index].path
+        let id = ''
+        if (images[index].hasOwnProperty('id')) {
+          id = images[index].id
+        }
+        wx.showModal({
+          title: '提示',
+          content: '确定要删除此图片吗？',
+          success: res => {
+            if (res.confirm) {
+              console.log('点击确定了');
+              wx.request({
+                url: `${this.$parent.globalData.requestUrl}/services/image_delete`,
+                header: {
+                  authorization: this.$parent.globalData.token,
+                  apikey: this.$parent.globalData.apikey
+                },
+                data:{
+                  path: path,
+                  id: id
+                },
+                method: 'POST',
+                success: data => {
+                  data = this.$parent.null2str(data)
+                  console.log(data)
+                  if (data.statusCode === 200) {
+                    wx.showToast({
+                      title: '删除成功'
+                    })
+                    let newImage = []
+                    for (let i = 0; i < images.length; i++) {
+                      if (images[i].path != path) {
+                        newImage.push(images[i])
+                      }
+                    }
+                    this.formNode.images = newImage
+                    this.$apply()
+                  } else{
+                    wx.showToast({
+                      title: '删除失败'
+                    })
+                  }
+                }
+              })
+            } else if (res.cancel) {
+              console.log('点击取消了');
+              return false;    
+            }
+          }
+        })
+        this.$apply()
+      },
+      // 行业选择浮层显示
+      changeIndustries() {
+        this.showModal = false
+        this.$apply()
+      },
+      // 进入城市选择页面
+      changeCities() {
+        this.$navigate('/pages/servicesCitySel')
+      },
+      // 选择行业
+      sel(e) {
+        let list = this.list
+        for (let i = 0; i < list.length; i++) {
+          list[i].sel = '0'
+        }
+        let sel = e.currentTarget.dataset.sel
+        let index = e.currentTarget.dataset.index
+        if (sel == '1') {
+          list[index].sel = '0'
+        } else {
+          list[index].sel = '1'
+        }
+        this.list = list
+        this.$apply()
+      },
+      // 新增特殊档期
+      newSpecials() {
+        this.$parent.globalData.formNode = this.formNode
+        this.$navigate('/pages/time')
+        // let formNode = this.formNode
+
+        // if (this.formNode.specials == '') {
+        //   formNode.specials = []
+        // }
+        // console.log(formNode)
+        // let specials = formNode.specials
+        // specials.push({         // 特殊档期
+        //   price: '',         // 价格
+        //   amount: '',        // 数量
+        //   time_start: '',    // 开始时间
+        //   time_end: ''       // 结束时间
+        // })
+        // this.formNode.specials = specials
+        // this.$apply()
+      },
+      // 删除特殊档期
+      delSpecials(e) {
+        let index = e.currentTarget.dataset.index
+        let id = e.currentTarget.dataset.id
+       
+        wx.showModal({
+          title: '提示',
+          content: '确定要删除吗？',
+          success: res => {
+            if (res.confirm) {
+              // 档期数据包含ID  通过接口删除
+              if (this.formNode.specials[index].hasOwnProperty('id')) {
+                wx.request({
+                  url: `${this.$parent.globalData.requestUrl}/services/special_set_delete/${id}`,
+                  header: {
+                    authorization: this.$parent.globalData.token,
+                    apikey: this.$parent.globalData.apikey
+                  },
+                  method: 'GET',
+                  success: data => {
+                    data = this.$parent.null2str(data)
+                    console.log(data)
+                    if (data.data.status_code == 200) {
+                      wx.showToast({
+                        title: '删除成功'
+                      })
+                      this.formNode.images = this.formNode.specials.splice(index, 1)
+                      this.$apply()
+                    } else{
+                      wx.showToast({
+                        title: '删除失败'
+                      })
+                    }
+                  }
+                })
+              } else {
+                // 档期数据无ID  直接删除
+                this.formNode.images = this.formNode.specials.splice(index, 1)
+                this.$apply()
+              }
+            } else if (res.cancel) {
+              console.log('点击取消了');
+              return false;    
+            }
+          }
+        })
+      },
+      // 获取时间日期
+      bindMultiPickerChange(e) {
+        this.multiIndex = e.detail.value
+        const index = this.multiIndex
+        const year = this.multiArray[0][index[0]]
+        const month = this.multiArray[1][index[1]]
+        const day = this.multiArray[2][index[2]]
+        const hour = this.multiArray[3][index[3]]
+        const minute = this.multiArray[4][index[4]]
+        let time = year + '/' + month + '/' + day + ' ' + hour + ':' + minute
+        let lv = e.currentTarget.dataset.lv
+        let sta = e.currentTarget.dataset.stater
+        // 判断获取正常时间，和特殊时间
+        if (lv == 'one') {
+          this.formNode[sta] = time
+        } else {
+          let specialsIndex = e.currentTarget.dataset.index
+          this.formNode.specials[specialsIndex][sta] = time
+        }
+        this.$apply()
+      },
+    }
+
+    events = {
+
+    }
+
+    onLoad(e) {
+      qqmapsdk = new qqmapwx({
+        key: this.$parent.globalData.mapKey
+      })
+      this.requestImgUrl = this.$parent.globalData.requestImgUrl
+      this.orderId = e.id
+      this.$apply()
+      // 获取行业列表
+      this.getIndustry()
+      
+    }
+    onShow() {
+      // let globalDataFormNode = this.$parent.globalData.serviceFormNode
+      // if (Object.keys(globalDataFormNode.length != 0)) {
+      //   this.formNode = this.$parent.globalData.globalDataFormNode
+      //   this.$apply()
+      // }
+      // this.$apply()
+      this.citySel()
+      //获取信息
+      this.getInfo()
+    }
+    // 获取行业
+    getIndustry() {
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/industries`,
+        header: {
+          authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        method: 'GET',
+        success: data => {
+          data = this.$parent.null2str(data)
+          if (data.statusCode === 200) {
+            let list = data.data.industries
+            for (let i = 0; i < list.length; i++) {
+              list[i]['sel'] = '0'
+            }
+            this.list = list
+            this.$apply()
+          } else{
+            console.log(data)
+          }
+        }
+      })
+    }
+    // 行业选择完成处理
+    industrySub() {
+      let list = this.list
+      let industry = ''
+      let industryName = ''
+      // console.log(list)
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].sel == '1') {
+          industry += list[i].id
+          industry += ','
+          industryName += list[i].title
+          industryName += ','
+        }
+      }
+      industry = industry.substring(0, industry.length - 1)
+      industryName = industryName.substring(0, industryName.length - 1)
+      this.formNode.industry_name = industryName
+      this.formNode.industry_id = industry
+      this.showModal = true
+      this.$apply()
+    }
+    citySel() {
+      let cityList = this.$parent.globalData.registeredCityList
+      console.log(cityList)
+      let cities = ''
+      let citiesName = ''
+      for (let i = 0; i < cityList.length; i++) {
+        if (cityList[i].sel == '1') {
+          cities += cityList[i].code
+          cities += ','
+          citiesName += cityList[i].fullName
+          citiesName += ','
+        }
+      }
+      cities = cities.substring(0, cities.length - 1)
+      citiesName = citiesName.substring(0, citiesName.length - 1)
+      this.formNode.serviceArea = citiesName
+      this.formNode.service_area = cities
+      this.$apply()
+    }
+    //获取信息
+    getInfo() {
+       wx.request({
+        url: `${this.$parent.globalData.requestUrl}/services/detail/${this.orderId}`,
+        method: 'GET',
+        header: {
+          Authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.log(data)
+          if (data.data.status_code == 200) {
+            this.formNode = data.data.data
+            console.log(this.formNode.industry_name)
+            console.log(this.formNode)
+            if (this.formNode.specials.length != 0) {
+              this.formNode.amount = '0'
+              this.formNode.price = '0'
+              this.$apply()
+            }
+            let type = this.formNode.type
+            if (type != '') {
+              if (type == 'normal') {
+                this.typeList[0].checked = true
+                this.typeList[1].checked = false
+              } else {
+                this.typeList[0].checked = false
+                this.typeList[1].checked = true
+              }
+            }
+            this.$apply()
+          }
+        }
+      })
+    }
+    //发布
+    sub() {
+      let formNode = this.formNode
+      console.log(this.formNode)
+      if (this.check.isNull(formNode.title)) {
+        wx.showToast({
+          title: '请输入标题',
+          icon: 'none'
+        })
+        return
+      }
+      if (this.check.isNull(formNode.description)) {
+        wx.showToast({
+          title: '请输入描述',
+          icon: 'none'
+        })
+        return
+      }
+      if (formNode.industry_name == '') {
+        wx.showToast({
+          title: '请选择服务类型',
+          icon: 'none'
+        })
+        return
+      }
+      if (formNode.serviceArea == '') {
+        wx.showToast({
+          title: '请选择服务区域',
+          icon: 'none'
+        })
+        return
+      }
+      // if (formNode.specials.length == 0) {
+      //   wx.showToast({
+      //     title: '请选择服务档期',
+      //     icon: 'none'
+      //   })
+      //   return
+      // }
+      if (this.check.isNull(formNode.peer_price)) {
+        wx.showToast({
+          title: '请输入同行价',
+          // market_price
+          icon: 'none'
+        });
+        return
+      }
+      if (this.check.isNull(formNode.market_price)) {
+        wx.showToast({
+          title: '请输入市场价',
+          icon: 'none'
+        });
+        return
+      }
+      
+      if (this.check.isNull(formNode.price)) {
+        wx.showToast({
+          title: '请输入单价',
+          // market_price
+          icon: 'none'
+        });
+        return
+      }
+      if (formNode.amount == '') {
+        wx.showToast({
+          title: '请输入数量',
+          // market_price
+          icon: 'none'
+        });
+        return
+      }
+      if (parseInt(formNode.amount) > 9999) {
+        wx.showToast({
+          title: `数量不能大于9999`,
+          icon: 'none'
+        })
+        return
+      }
+      if (formNode.service_area_name == '') {
+        wx.showToast({
+          title: '请选择地址',
+          icon: 'none'
+        })
+        return
+      }
+      if (formNode.images.legnth == 0) {
+        wx.showToast({
+          title: '请添加图片',
+          icon: 'none'
+        })
+        return
+      }
+      wx.showToast({
+        title: '发布中...',
+        icon: 'loading',
+        duration: 1000000
+      });
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/services/update`,
+        method: 'POST',
+        header: {
+          Authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        data: formNode,
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.log(data)
+          if (data.data.status_code == 201) {
+            wx.showToast({
+              title: "修改成功",
+              icon: 'none',
+              duration: 2000
+            })
+            setTimeout(() => {
+              wx.navigateBack({
+                delta: -1
+              })
+            }, 2000)
+          } else if (data.data.status_code == 400) {
+            wx.showToast({
+              title: data.data.message,
+              icon: 'none'
+            })
+          } else {
+            wx.showToast({
+              title: data.data.message,
+              icon: 'none'
+            })
+          }
+        }
+      })
+    }
+
+    // 监听picker的滚动事件
+    bindMultiPickerColumnChange(e) {
+      // 获取年份
+      if (e.detail.column === 0) {
+        let chooseYear = this.multiArray[e.detail.column][e.detail.value]
+      }
+      if (e.detail.column === 1) {
+        let num = parseInt(this.multiArray[e.detail.column][e.detail.value])
+        let temp = []
+        if (num === 1 || num === 3 || num === 5 || num === 7 || num === 8 || num === 10 || num === 12) {
+          // 判断31天的月份
+          for (let i = 1; i <= 31; i++) {
+            if (i < 10) {
+              i = '0' + i
+            }
+            temp.push('' + i)
+          }
+          this.multiArray[2] = temp
+        } else if (num === 4 || num === 6 || num === 9 || num === 11) {
+          // 判断30天的月份
+          for (let i = 1; i <= 30; i++) {
+            if (i < 10) {
+              i = '0' + i
+            }
+            temp.push('' + i)
+          }
+          this.multiArray[2] = temp
+        } else if (num === 2) {
+          // 判断2月份天数
+          let year = parseInt(this.chooseYear)
+          if (((year % 400 === 0) || (year % 100 !== 0)) && (year % 4 === 0)) {
+            for (let i = 1; i <= 29; i++) {
+              if (i < 10) {
+                i = '0' + i
+              }
+              temp.push('' + i)
+            }
+            this.multiArray[2] = temp
+          } else {
+            for (let i = 1; i <= 28; i++) {
+              if (i < 10) {
+                i = '0' + i
+              }
+              temp.push('' + i)
+            }
+            this.multiArray[2] = temp
+          }
+        }
+      }
+      var data = {
+        multiArray: this.multiArray,
+        multiIndex: this.multiIndex
+      }
+      data.multiIndex[e.detail.column] = e.detail.value
+      this.setData(data)
+    }
+    // 根据地址获取地图信息
+    getMapInfo(address) {
+      // 调用地址解析接口
+      qqmapsdk.geocoder({
+        // 获取表单传入地址
+        address: address, // 地址参数，例：固定地址，address: '北京市海淀区彩和坊路海淀西大街74号'
+        success: res => { // 成功后的回调
+          var res = res.result
+          var latitude = res.location.lat
+          var longitude = res.location.lng
+          // 根据地址解析在地图上标记解析地址位置
+          this.markers = [{
+            id: 0,
+            title: res.title,
+            latitude: latitude,
+            longitude: longitude,
+            iconPath: '../image/position.png', // 图标路径
+            callout: { // 可根据需求是否展示经纬度
+              content: address,  // 文字西安市
+              color: '#000',
+              display: 'ALWAYS'
+            }
+          }]
+          this.province = res.address_components.province
+          this.city = res.address_components.city
+          this.district = res.address_components.district
+          this.getAddres = this.province+this.city + this.district
+          console.log(this.getAddres)
+          this.$apply()
+        },
+        fail: function(error) {
+          console.error(error)
+        },
+        complete: function(res) {
+          console.log(res)
+        }
+      })
+    }
+    // 用户信息校验
+    verificationUserInfo() {
+      if (!this.userInfo.hasOwnProperty('id')) {
+        wx.showToast({
+          title: '用户信息加载中...',
+          icon: 'none'
+        })
+        return true
+      }
+    }
+    // 图片上传
+    runUpHotelImgList() {
+      let count = 3 - this.formNode.images.length
+      wx.chooseImage({
+        count: count,
+        sizeType: ['original', 'compressed'],
+        sourceType: ['album', 'camera'],
+        success: res => {
+          wx.showToast({
+            title: '图片上传中',
+            icon: 'loading'
+          })
+          Promise.all(res.tempFiles.map(item => {
+            return new Promise((resolve, reject) => {
+              wx.uploadFile({
+                url: `${this.$parent.globalData.requestUrl}/uploads`,
+                filePath: item.path,
+                name: 'file',
+                header: {
+                  authorization: this.$parent.globalData.token,
+                  apikey: this.$parent.globalData.apikey
+                },
+                success: res => {
+                  console.log(JSON.parse(res.data).data)
+                  resolve({
+                    path: JSON.parse(res.data).data
+                  })
+                }
+              })
+            })
+          })).then(e => {
+            wx.hideToast()
+            let formNode = this.formNode
+            if (this.formNode.images == '') {
+              formNode.images = []
+            }
+            let imgListNode = e
+            let newImageList = []
+            for (let i = 0; i < imgListNode.length; i++) {
+              newImageList.push(imgListNode[i].path)
+            }
+            formNode.images = formNode.images.concat(newImageList)
+            console.log(this.formNode)
+            this.$apply()
+          }).catch(err => console.log(err))
+        }
+      })
+    }
+  }
+</script>
+<style lang="less">
+  .com{
+    padding-bottom: 120rpx;
+  }
+  .item{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    // align-items: center;
+    justify-content: space-between;
+    view{
+      width: 660rpx;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    label{
+      width: 120rpx;
+      padding-right: 20rpx;
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1F1F1F;
+    }
+    text{
+      width: 500rpx;
+      font-size: 30rpx;
+      color: #333;
+    }
+    icon{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30rpx;
+      height: 30rpx;
+      font-size: 30rpx;
+      color: #1F1F1F;
+    }
+    input{
+      width: 552rpx;
+    }
+    textarea{
+      width: 530rpx;
+      height: 160rpx;
+      padding: 10rpx;
+      border-radius: 10rpx;
+      border: 1rpx solid #DFDFDF;
+    }
+  }
+  .title{
+    width: 690rpx;
+    height: auto;
+    padding: 30rpx;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1F1F1F;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    text{
+      font-size: 28rpx;
+      font-weight: 500;
+      color: #999999;
+    }
+    radio-group{
+      font-size: 28rpx;
+      font-weight: 400;
+      padding-left: 30rpx;
+    }
+  }
+   .imgList{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    // align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    .iconchuanzhaopian{
+      font-size: 214rpx;
+      height: 214rpx;
+      width: 214rpx;
+    }
+    image{
+      width: 214rpx;
+      height: 214rpx;
+      // margin: 10rpx 21rpx 10rpx 0;
+      border-radius: 10rpx;
+    }
+    view{
+      position: relative;
+      margin: 5px 10px 5px 0;
+          // width: 107px;
+    }
+    view:nth-child(3n){
+      margin-right: 0;
+    }
+  }
+  .button{
+    margin-bottom: 220rpx;
+  }
+  map{
+    width:690rpx;
+    padding:10rpx 30rpx;
+    height:690rpx;
+  }
+
+
+
+.modalBox{
+  width: 100%;
+  font-size: 32rpx;
+}
+.box{
+  margin: 0 auto;
+  width: 630rpx;
+}
+.calendarTitleh1{
+  position: relative;
+  width: 100%;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1F1F1F;
+  view{
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+.calendarTitle{
+  width: 100%;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #1F1F1F;
+  view{
+    width: 101.4rpx;
+  }
+  .iconfont{
+    width: 80rpx;
+    height: 80rpx;
+    font-size: 50rpx;
+    color: #999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .iconjiantou_zuo{
+    font-size: 30rpx;
+  }
+}
+.week{
+  display: inline-block;
+  width:90rpx;
+  height: 80rpx;
+  text-align: center;
+  line-height: 80rpx;
+  border-bottom: 1rpx solid #ddd;
+  view{
+    position: relative;
+    background-color: #fff;
+  }
+  
+}
+.timeListDom{
+  width: 710rpx;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: row;
+  flex-wrap: wrap;
+  .items{
+    width: 81.4rpx;
+    height: 70rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 10rpx 10rpx;
+    position: relative;
+    color: #999999;
+    text{
+      position: absolute;
+      top: 5rpx;
+      right: 5rpx;
+      font-size: 20rpx;
+      color: #F42652;
+    }
+  }
+  .noActive{
+    background-color: #EDEDED;
+    color: #999999;
+    text{
+      color: #F42652;
+    }
+  }
+  .active{
+    background-color: #F42652;
+    color: #fff;
+    text{
+      color: #fff;
+    }
+  }
+}
+
+.getTime{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  view{
+    margin: 40rpx 0;
+    background-color: #F42652;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #fff;
+    width: 280rpx;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+/* 模态框 */
+  
+.modal-mask { 
+  width: 100%; 
+  height: 100%; 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  background: #000; 
+  opacity: 0.5; 
+  overflow: hidden; 
+  z-index: 9000; 
+}
+.modal-dialog { 
+  width: 710rpx; 
+  padding: 0 20rpx;
+  overflow: hidden; 
+  position: fixed; 
+  left: 0; 
+  right: 0;
+  bottom: 0;
+  margin: 0 auto; 
+  z-index: 9999; 
+  background: rgba(255, 255, 255, 1); 
+  border-radius: 5rpx; 
+} 
+
+
+
+/* 模态框 */
+  
+.modal-mask { 
+  width: 100%; 
+  height: 100%; 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  background: #fff; 
+  opacity: 1; 
+  overflow: hidden; 
+  z-index: 9000; 
+}
+.modal-dialog { 
+  width: 710rpx; 
+  padding: 0 20rpx;
+  overflow: hidden; 
+  position: fixed; 
+  left: 0; 
+  right: 0;
+  top: 0;
+  margin: 0 auto; 
+  z-index: 9999; 
+  background: rgba(255, 255, 255, 1); 
+	border-radius: 5rpx; 
+	.title{
+		width: 690rpx;
+		height: auto;
+		padding: 30rpx;
+		font-size: 30rpx;
+		font-weight: 600;
+		color: #1F1F1F;
+	}
+	.list{
+		width: 690rpx;
+		height: auto;
+		padding: 30rpx;
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		flex-direction: row;
+		flex-wrap: wrap;
+		view{
+			margin: 10rpx;
+			color: #1F1F1F;
+			font-size: 30rpx;
+			// font-weight: 600;
+			padding: 20rpx 30rpx;
+			background-color: #F7F7F7;
+			border-radius: 100rpx;
+		}
+		.active{
+			color: #fff;
+			background-color: #F42652;
+		}
+	}
+	.showCon{
+		width: 580rpx;
+		height: 445rpx;
+	}
+}
+.newSpecials{
+  margin-bottom: 250rpx;
+  width: 690rpx;
+  height: auto;
+  padding: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  view{
+    background-color: #F42652;
+    width: auto;
+    height: auto;
+    padding: 10rpx 20rpx;
+    font-size: 30rpx;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+.specialsItem{
+  border-top: 5rpx solid #F42652;
+  .title{
+    width: auto;
+    padding: 0;
+    color: #F42652;
+    font-size: 30rpx;
+    font-weight: 600;
+    
+  }
+}
+.iconbuoumaotubiao20{
+  position: absolute;
+  right: -6rpx;
+  top: -26rpx;
+  color: #F42652;
+}
+</style>

@@ -1,0 +1,184 @@
+<template>
+  <view class="cash">
+    <text class="title">提现金额</text>
+    <view class="input">
+      <label>￥</label>
+      <input type="number" placeholder="请输入提现金额" @input="getInput" />
+    </view>
+    <view class="money" wx:if="{{type == 1}}">当前余额{{list.balance}}元</view>
+    <view class="money" wx:if="{{type == 2}}">当前余额{{list.margin_amount}}元</view>
+    <button wx:if="{{money == ''}}">提现</button>
+    <button wx:else style=" background: #F42652;" @tap="recharge">提现</button>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  export default class MeCash extends wepy.page {
+    config = {
+      navigationBarTitleText: '提现'
+    }
+    components = {}
+
+    mixins = []
+
+    data = {
+      list: {},
+      money: '',
+      type: ''
+    }
+
+    computed = {}
+
+    methods = {
+      getInput(e) {
+        console.log(e.detail.value)
+        let atm = e.detail.value
+        console.log(this.list.balance)
+        let moneyList = parseInt(this.list.balance)
+        if(atm > moneyList) {
+          wx.showToast({
+            title: '提现金额不能大于余额',
+            duration: 1000
+          })
+          return ''
+          this.flag = true
+        }
+        if( 0 >= atm) {
+          wx.showToast({
+            title: '请输入提现金额',
+            duration: 1000
+          })
+          return ''
+          this.flag = true
+        }
+        if(atm == ' ') {
+          wx.showToast({
+            title: '请输入提现金额',
+            duration: 1000
+          })
+          this.flag = true
+        }
+        this.money = atm
+      }
+    }
+
+    events = {
+      
+    }
+
+    onLoad(e) {
+      this.$apply()  
+    }
+    onShow(){
+      this.meUser()
+    }
+     //获取信息
+    meUser(){
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/merchant/wallet`,
+        header: {
+          authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        method: 'GET',
+        success: data => {
+          data = this.$parent.null2str(data)
+          console.log(data)
+          if (data.data.status_code === 200 || data.data.status_code === 201) {
+            this.list = data.data.data
+            this.$apply()
+          } else{
+            console.log(data)
+          }
+        }
+      })
+    }
+    // 
+    recharge() {
+      wx.showToast({
+        title: "拼命加载中...",
+        icon: 'loading',
+        duration: 1000000
+      });
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/cash-withdrawals/apply`,
+        header: {
+          authorization: this.$parent.globalData.token
+        },
+        data: {
+          money:this.money
+        },
+        method: 'POST',
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.log(data)
+          if (data.data.status_code === 200) {
+            wx.showToast({
+              title: "提现成功",
+              icon: 'success',
+              duration: 1000
+            });
+             // 两秒后返回上一页
+            setTimeout(e => {
+              wx.redirectTo({
+                url: `/pages/myMoney`
+              })
+            }, 2000)
+          } else {
+            wx.showToast({
+              title: data.data.msg,
+              icon: 'none'
+            });
+          }
+        }
+      })
+    }
+  }
+</script>
+<style lang="less">
+page{
+  background: #efefef;
+}
+.cash{
+  width: 630rpx;
+  background: #fff;
+  border-radius: 8rpx;
+  margin: 30rpx auto;
+  padding: 30rpx;
+  .title{
+    color: #333;
+    font-size: 30rpx;
+  }
+  .input{
+    display: flex;
+    justify-content: flex-start;
+    align-content: center;
+    align-items: center;
+    height: 60rpx;
+    border-bottom: 1rpx solid #dedede;
+    margin: 16rpx 0 10rpx;
+    padding-bottom: 16rpx;
+    label{
+      font-size: 50rpx;
+      font-weight: 600;
+      color: #333;
+    }
+  }
+  .money{
+    font-size: 24rpx;
+    color: #ccc;
+  }
+  button{
+    margin-top: 30rpx;
+    border: none;
+   background: #dedede;
+    color: #fff;
+  }
+  button::after{
+    border:none
+  }
+}
+
+</style>

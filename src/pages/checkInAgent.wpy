@@ -1,0 +1,249 @@
+<template>
+	<view class="check">
+		<view class="checkItem">
+			<label for="phone">手机号</label>
+			<input type="number" data-name="phone" @input="getSetData" id="phone" placeholder="请输入手机号" placeholder-class="placeholder" />
+		</view>
+		<view class="checkItem">
+			<label for="verification">验证码</label>
+			<input type="number" data-name="get_code" @input="getSetData" id="verification" placeholder="请输入验证码" placeholder-class="placeholder" />
+			<view class="getCode" @tap="getCode">{{time}}</view>
+		</view>
+		<view class="checkItem">
+			<label for="invite">输入邀请码</label>
+			<input type="number" data-name="p_invitation_code" @input="getSetData" id="invite" placeholder="非必填" placeholder-class="placeholder" />
+		</view>
+		 <view class="moveInto" @tap="checkIn">申请入驻</view>
+	</view>
+</template>
+
+<script>
+import wepy from 'wepy'
+export default class CheckInUser extends wepy.page {
+  config = {
+    navigationBarTitleText: '用户入住'
+  };
+  components = {};
+	data = {
+		index: '',
+		formNode: {
+			phone: '',             // 电话
+			get_code: '',              // 验证码
+			p_invitation_code: '', // 邀请码
+		},
+		disabled: false,
+		currentTime: 60,   // 倒计时初始值
+		time: '发送验证码',
+		code: ''
+	};
+	methods = {
+		// 表单数据获取
+		getSetData(e) {
+			let formNode = this.formNode
+			let name = e.currentTarget.dataset.name
+			let value = e.detail.value
+			formNode[name] = value
+			this.formNode = formNode
+			console.log(formNode)
+			this.$apply()
+		},
+		getCode() {
+			// 获取验证码
+			this.runGetCode()
+		},
+	}
+	onLoad(options) {
+		wx.login({
+      success: res => {
+        this.code = res.code
+      }
+    })
+	}
+	mixins = [];
+	checkIn() {
+		let formNode = this.formNode
+		console.log(formNode)
+		if (formNode.phone == '') {
+			wx.showToast({
+				title: "请输入手机号",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		if (formNode.phone.length != 11) {
+			wx.showToast({
+				title: "请输入正确的手机号",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		if (formNode.get_code == '') {
+			wx.showToast({
+				title: "请输入验证码",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		wx.showToast({
+			title: '注册中...',
+			icon: 'loading',
+			duration: 1000000
+		});
+		wx.request({
+			url: `${this.$parent.globalData.requestUrl}/api/register`,
+			method: 'POST',
+			header: {
+				Authorization: this.$parent.globalData.token,
+				apikey: this.$parent.globalData.apikey
+			},
+			data: {
+				code: this.code,
+				phone: formNode.phone,
+				verification_code: formNode.get_code,
+				type: 1,
+				verification_key: 'verificationCode_kCj7oyv1htOOsPl'
+			},
+			success: data => {
+				wx.hideToast()
+				data = this.$parent.null2str(data)
+				if (data.statusCode == 200) {
+					wx.showToast({
+						title: "注册成功，进入首页",
+						icon: 'none',
+						duration: 2000
+					});
+					setTimeout(() => {
+						let url = `/pages/index`
+						this.$reLaunch(url)
+					}, 2000)
+				} else {
+					wx.showToast({
+						title: data.data.message,
+						icon: 'none'
+					})
+				}
+			}
+		})
+	}
+	// 获取验证码
+	runGetCode() {
+		if (this.disabled) {
+			return false
+		}
+		if (this.formNode.phone == '') {
+			wx.showToast({
+				title: "请输入手机号",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		if (this.formNode.phone.length != 11) {
+			wx.showToast({
+				title: "请输入正确的手机号",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		wx.showToast({
+			title: "请求发送中...",
+			icon: 'loading',
+			duration: 10000
+		});
+		this.disabled = true
+		this.$apply()
+		wx.request({
+			url: `${this.$parent.globalData.requestUrl}/verificationCodes`,
+			method: 'POST',
+			header: {
+				'content-type':'application/json',
+				apikey: this.$parent.globalData.apikey
+			},
+			data: {
+				phone: this.formNode.phone
+			},
+			success: data => {
+				wx.hideToast()
+				data = this.$parent.null2str(data)
+				if (data.data.code === 8888) {
+					wx.showToast({
+						title: data.data.msg,
+						icon: 'success',
+						duration: 1000
+					});
+					this.$apply()
+					this.countdown()
+				} else {
+					wx.showToast({
+						title: data.data.msg,
+						icon: 'none'
+					});
+				}
+			}
+		})
+	}
+	// 倒计时
+	countdown() {
+		var currentTime = this.currentTime;
+		this.time = `倒计时${currentTime}秒`
+		this.$apply()
+		var interval = setInterval(() => {
+			this.time = '倒计时' + (currentTime - 1) + '秒'
+			this.$apply()
+			currentTime--
+			if (currentTime <= 0) {
+				clearInterval(interval)
+				this.time = '重新获取'
+				this.currentTime = 60
+				this.disabled = false
+				this.$apply()
+			}
+		}, 1000)
+	}
+}
+</script>
+<style lang="less">
+.check {
+  width: 750rpx;
+  .checkItem {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2rpx solid #ccc;
+    padding: 30rpx 30rpx;
+    label {
+      font-size: 30rpx;
+    }
+    input {
+      width: 500rpx;
+      text-align: right;
+    }
+    .placeholder{
+			font-size: 30rpx;
+			color: #ccc;
+    }
+  }
+  #verification {
+    width: 300rpx;
+  }
+  .getCode {
+    font-size: 22rpx;
+    color: #F42652;
+    border: 2rpx solid #F42652;
+    padding: 6rpx 14rpx;
+    border-radius: 16rpx;
+	}
+	.moveInto{
+		width: 600rpx;
+		padding: 20rpx 0;
+		text-align: center;
+		color: #fff;
+		background: #F42652;
+		border-radius: 10rpx;
+		margin: 120rpx auto 0;
+	}
+}
+</style>

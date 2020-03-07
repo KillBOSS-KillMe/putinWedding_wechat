@@ -1,0 +1,378 @@
+<template>
+  <view class="meOrder">
+    <view class="titleImg">
+      <image wx:if="{{orderInfo.pay_type == 'deposit'}}" src="../image/wzf.png">
+      <image wx:if="{{orderInfo.pay_type == 'full'}}" src="../image/yzf.png">
+      <!-- <image src="../image/wzf.png"> -->
+    </view>
+    <view class="content">
+      <text class="orderCode">订单号：{{orderInfo.order_no}}</text>
+      <view class="orderContent">
+        <repeat for="{{orderInfo.items}}" item="item">
+          <view class="item">
+            <image src="{{requestImgUrl+orderInfo.title_image}}">
+            <view class="itemBox">
+              <view class="itemTitle">
+                <text class="title">{{item.service.title}}</text>
+                <!-- <text class="num">￥{{item.service.unit_price}}</text> -->
+              </view>
+              <text class="time">预约时间:{{item.service.time_start}}~{{item.service.time_end}}</text>
+              <text class="address">{{item.description}}</text>
+            </view>
+          </view>
+        </repeat>
+        
+        <view class="item" >
+          <text class="left">付款方式</text>
+          <text wx:if="{{orderInfo.pay_type == 'full'}}">全款支付</text>
+          <text wx:if="{{orderInfo.pay_type == 'deposit'}}">押金支付</text>
+        </view>
+        <view>
+          <view class="item"  wx:if="{{orderInfo.pay_type == 'full'}}">
+            <text class="left" style="font-weight: 600">全款支付</text>
+            <text>{{orderInfo.total_amount}}</text>
+          </view>
+          <view class="item"  wx:if="{{orderInfo.pay_type == 'deposit'}}">
+            <text class="left" style="font-weight: 600">押金支付</text>
+            <text>{{orderInfo.deposit}}</text>
+          </view>
+        </view>
+        <!-- <view class="item"  wx:if="{{orderInfo.pay_type == 'deposit' && userInfo.type == 'normal'}}">
+          <view class="section section_gap" wx:if="{{orderInfo.pay_type == 'deposit'}}">
+            <radio-group class="radio-group" @change="radioChange">
+              <!-- deposit: 付押金 full:付全款 -->
+              <!-- <radio class="radio" value="full" wx:if="{{orderInfo.pay_type != 'deposit'}}">
+                  <text>支付定金</text>
+                  <text class="radioPrice">￥{{orderInfo.deposit}}</text>
+              </radio>
+              <radio class="radio" value="deposit">
+                  <text>支付尾款</text>
+                  <text style="font-size:20rpx">（在订单完成之前完成之前支付全款）</text>
+                  <text style="display:inline-block;width: 105px;text-align: right;">￥{{orderInfo.balance}}</text>
+              </radio>
+            </radio-group>
+          </view>
+          <view class="section section_gap" wx:if="{{orderInfo.pay_type == 'full'}}">
+            <radio-group class="radio-group" @change="radioChange">
+              <radio class="radio" value="full">
+                <text>支付全款</text>
+                <text class="radioPrice">￥{{orderInfo.deposit}}</text>
+              </radio>
+            </radio-group>
+          </view>
+        </view>  -->
+        <view class="item">
+          <text class="left">是否已接单</text>
+          <text wx:if="{{orderInfo.is_accept == '1'}}">已接单</text>
+          <text wx:if="{{orderInfo.is_accept == '0'}}">未接单</text>
+        </view>
+        <view class="item">
+          <text class="left">订单是否完成</text>
+          <text wx:if="{{orderInfo.is_complete == '1'}}">完成</text>
+          <text wx:if="{{orderInfo.is_complete == '0'}}">未完成</text>
+        </view>
+        <view class="item">
+          <text class="left">所在地</text>
+          <text>{{orderInfo.reservation_address}}</text>
+        </view>
+        
+        <view class="item">
+          <text class="left">总金额</text>
+          <text class="price">￥{{orderInfo.total_amount}}</text>
+        </view>
+      </view>
+    </view>
+    <!-- <view class="bottom" wx:if="{{orderInfo.pay_type == 'deposit' && userInfo.type == 'normal'}}">
+      <view class="count">
+        总额需支付：
+        <text>￥{{orderInfo.balance}}</text>
+      </view>
+      <view class="goMoney" @tap="goShopMoney({{orderInfo.id}})">立即支付</view>
+    </view> -->
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  export default class MeOrderDetail extends wepy.page {
+    config = {
+      navigationBarTitleText: '订单详情'
+    }
+    components = {
+    }
+
+    mixins = []
+
+    data = {
+      options: null,
+      orderInfo: null,
+      requestImgUrl:'',
+      userInfo:''
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      // goShopMoney(e){
+      //    wx.showToast({
+      //     title: "数据加载...",
+      //     icon: 'loading',
+      //     duration: 1000000
+      //   });
+      //   wx.request({
+      //     url: `${this.$parent.globalData.requestUrl}/payment/wechat_pay`,
+      //     method: 'POST',
+      //     header: {
+      //       authorization: this.$parent.globalData.token,
+      //       apikey: this.$parent.globalData.apikey
+      //     },
+      //     data: {
+      //       order_id: id
+      //     },
+      //     success: data => {
+      //       wx.hideToast()
+      //       data = this.$parent.null2str(data)
+      //       console.log(data)
+      //       let payNode = data.data
+      //       wx.requestPayment({
+      //         'timeStamp': payNode.timeStamp,
+      //         'nonceStr': payNode.nonceStr,
+      //         'package': payNode.package,
+      //         'signType': payNode.signType,
+      //         'paySign': payNode.paySign,
+      //         'success': data => {
+      //           wx.hideToast()
+      //           wx.showToast({
+      //             title: "支付成功",
+      //             icon: 'success',
+      //             duration: 2000
+      //           });
+      //           wx.showToast({
+      //             title: "订单数据更新...",
+      //             icon: 'loading',
+      //             duration: 1000000
+      //           });
+      //           setTimeout(e => {
+      //             wx.hideToast()
+      //             this.upDateUser(id, index)
+      //           }, 2000)
+                
+      //         },
+      //         'fail': data => {
+      //           wx.hideToast()
+      //           wx.showToast({
+      //             title: "充值失败",
+      //             icon: 'none',
+      //             duration: 2000
+      //           });
+      //         }
+      //       })
+      //     }
+      //   })
+      // }
+    }
+    events = {
+
+    }
+
+    onLoad(options) {
+      this.options = options
+      this.requestImgUrl = this.$parent.globalData.requestImgUrl
+      this.userInfo = this.$parent.globalData.userInfo
+      this.$apply()
+      // 加载订单信息
+      this.getOrderInfo()
+    }
+    getOrderInfo() {
+      wx.showToast({
+        title: "订单数据加载...",
+        icon: 'loading',
+        duration: 1000000
+      });
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/orders/info/${this.options.id}`,
+        method: 'GET',
+        header: {
+          authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.log(data)
+          if (data.data.status_code == 200) {
+            this.orderInfo = data.data.data
+            this.$apply()
+          } else if (data.data.status_code == 400) {
+            wx.showToast({
+              title: data.data.message,
+              icon: 'none',
+              duration: 2000
+            })
+          }
+          // let payNode = data.data
+          
+        }
+      })
+    }
+    onUnload() {
+    }
+  }
+</script>
+<style lang="less">
+.meOrder{
+  width: 750rpx;
+  .titleImg{
+    width: 750rpx;
+    height: 144rpx;
+    image{
+      width: 100%;
+      height: 100%;
+    }
+  }
+  .orderCode{
+    padding: 30rpx;
+    display: block;
+    color: #1F1F1F;
+    font-size: 26rpx;
+    font-weight: 600;
+    border-bottom: 2rpx solid #e2e2e2;
+  }
+  .orderContent{
+    width: 690rpx;
+    padding:0 30rpx 30rpx;
+    .item{
+      padding: 30rpx 0;
+      border-bottom: 2rpx solid #e2e2e2;
+      display: flex;
+      justify-content: space-between;
+      image{
+        width: 200rpx;
+        height: 150rpx;
+        border-radius: 10rpx;
+      }
+      .itemBox{
+        display: flex;
+        align-content: space-between;
+        flex-wrap: wrap;
+        width: 460rpx;
+        text{
+          display: block;
+        }
+        .itemTitle{
+          width: 100%;
+          display: flex;
+          justify-content: space-between;
+          // align-items: center;
+          .title{
+            font-size: 32rpx;
+            font-weight: 600;
+            color: #1F1F1F;
+            width: 380rpx;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .num{
+            color: #000000;
+            font-size: 24rpx
+          }
+        }
+        .time{
+          color: #494949;
+          font-size: 26rpx;
+          width: 100%;
+        }
+        .address{
+          color: #000000;
+          font-size: 28rpx;
+          font-weight: 600
+        }
+      }
+      .left{
+        color: #1F1F1F;
+        font-size: 30rpx;
+        font-weight: 600
+      }
+      text{
+        font-size: 26rpx;
+        color: #1F1F1F;
+      }
+      .price{
+        font-weight: 600;
+        font-size: 26rpx;
+        color: #F42652;
+      }
+    }
+  }
+  radio{
+    display: flex;
+    margin-bottom: 20rpx;
+    align-items: center;
+    align-content: center;
+    justify-content: space-between;
+    .radioPrice{
+      display: inline-block;
+      width: 550rpx;
+      text-align: right;
+    }
+  }
+  radio .wx-radio-input{
+    border-radius: 50%;/* 圆角 */
+    width: 22rpx;
+    height: 22rpx;
+  }
+  /* 选中后的 背景样式 （红色背景 无边框 可根据UI需求自己修改） */
+  radio .wx-radio-input.wx-radio-input-checked{
+    border-color: transparent;
+    background: #F42652;
+  }
+  /* 选中后的 对勾样式 （白色对勾 可根据UI需求自己修改） */
+  radio .wx-radio-input.wx-radio-input-checked::before{
+    border-radius: 50%;/* 圆角 */
+    width: 23rpx; /* 选中后对勾大小，不要超过背景的尺寸 */
+    height: 23; /* 选中后对勾大小，不要超过背景的尺寸 */
+    line-height: 23rpx;
+    text-align: center;
+    font-size:16rpx; /* 对勾大小 30rpx */
+    color:#fff; /* 对勾颜色 白色 */
+    background: transparent;
+    transform:translate(-50%, -50%) scale(1);
+    -webkit-transform:translate(-50%, -50%) scale(1);
+  }
+  .bottom{
+    width: 750rpx;
+    background: #fff;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 98rpx;
+    line-height: 98rpx;
+    display: flex;
+    justify-content: space-between;
+    border-top: 1rpx solid #e2e2e2;
+    .goMoney{
+      width: 292rpx;
+      height: 100%;
+      background: #F42652;
+      color: #fff;
+      font-size: 34rpx;
+      font-weight: 600;
+      text-align: center;
+    }
+    .count{
+      font-size: 26rpx;
+      font-weight: 600;
+      color:#0C0C0C;
+      text-align: center;
+      margin: 0 auto;
+      text{
+        color: #F42652;
+        
+      }
+    }
+  }
+}
+</style>

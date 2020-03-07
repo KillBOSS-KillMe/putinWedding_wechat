@@ -1,0 +1,346 @@
+<template>
+  <view class="agentCheck">
+    <image class="logo" src='../image/agentLogo.png'/>
+    <view>
+      <text class="title">如何成为代理商?成为代理商的好处</text>
+      <view class="content">
+        <text>1.注册资金（实缴）不低于1000万元；</text>
+        <text>2.有良好的虚拟卡充值/运营商/异业各渠道代理运营、拓展经验，3年以上运营合作经验；</text>
+        <text>3.具备专业的技术、营销、运营及售后等服务团队；</text>
+        <text>4.良好的企业信誉及行业美誉度；</text>
+        <text>5.在预授权的分销行业内，有丰富的渠道资源；</text>
+        <text>6.认同并接受腾讯视频关于合同付款、合作伙伴资格等各项要求。</text>
+      </view>
+    </view>
+    <view class="flex item" style="align-items: inherit;">
+      <label>验证身份：</label>
+      <view class="right flex" style="justify-content: space-between;">
+        <view class="rightItem">
+          <image wx:if="{{formNode.verification_file != ''}}"  @tap="upHotelImgList" src="{{requestImgUrl+formNode.verification_file[0].path.path}}" />
+          <icon wx:else class="iconfont iconchuanzhaopian" @tap="upHotelImgList"></icon>
+          <text>请上传身份证正面照</text>
+        </view>
+        <view class="rightItem">
+          <image wx:if="{{formNode.verification_file1 != ''}}"  @tap="upHotelImgLis" src="{{requestImgUrl+formNode.verification_file1[0].path.path}}" />
+          <icon wx:else class="iconfont iconchuanzhaopian" @tap="upHotelImgLis"></icon>
+          <text>请上传身份证反面照</text>
+        </view>
+      </view>
+    </view>
+    <view class="flex item" @tap="changeCities">
+      <label>代理区域：</label>
+      <input type="text" placeholder="请选择" placeholder-class="placeholder" disabled value="{{formNode.areasName}}" />
+    </view>
+    <button class="button" @tap="sub">提交申请</button>
+    <cal></cal>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  import Call from '../components/call' // 客服
+  export default class AgentCheck extends wepy.page {
+    config = {
+      navigationBarTitleText: '代理商入驻'
+    }
+    components = {
+      cal:Call
+    }
+
+    mixins = []
+
+    data = {
+      formNode: {
+        type: '',
+        areasName: '',
+        areas: '',
+        verification_file: [],
+        verification_fileShow: [],
+        verification_file1: []
+      },
+      requestImgUrl: ''
+    }
+
+    computed = {}
+
+    methods = {
+      changeCities() {
+        this.$navigate(`/pages/citySel?type=${this.formNode.type}`)
+      },
+      //上传图片
+      upHotelImgList() {
+        this.runUpHotelImgList()
+      },
+      upHotelImgLis() {
+        this.runUpHotelImgList1()
+      },
+      sub() {
+       let formNode = this.formNode
+       console.log(formNode)
+       console.log(this.formNode.verification_file.path)
+       console.log(this.formNode.verification_file1.path)
+       this.verification_fileShow = this.formNode.verification_file.concat(this.formNode.verification_file1)
+       let img = ''
+       for (let i = 0; i < this.verification_fileShow.length; i++) {
+         
+         img += this.verification_fileShow[i].path.path
+         img += ','
+       }
+       this.verification_fileShow = img
+       console.log(this.verification_fileShow)
+       if (formNode.verification_file == '') {
+          wx.showToast({
+            title: "请上传身份证",
+            icon: 'none',
+            duration: 2000
+          });
+          return false
+        }
+        if (formNode.verification_file1 == '') {
+          wx.showToast({
+            title: "请上传身份证",
+            icon: 'none',
+            duration: 2000
+          });
+          return false
+        }
+        if (formNode.areas == '') {
+          wx.showToast({
+            title: "请选择代理区域",
+            icon: 'none',
+            duration: 2000
+          });
+          return false
+        }
+        wepy.login({
+          success: res => {
+            if (res.code) {
+              this.formNode.code = res.code
+              this.$apply()
+              wx.request({
+                url: `${this.$parent.globalData.requestUrl}/users/dealer_apply`,
+                method: 'POST',
+                header: {
+                  Authorization: this.$parent.globalData.token,
+                  apikey: this.$parent.globalData.apikey
+                },
+                data: {
+                  areas:this.formNode.areas,
+                  verification_file: this.verification_fileShow
+                },
+                success: data => {
+                  wx.hideToast()
+                  data = this.$parent.null2str(data)
+                  console.log(data)
+                  if (data.data.status_code == 200) {
+                    wx.showToast({
+                      title: "已提交申请,等待审核",
+                      icon: 'none',
+                      duration: 4000
+                    })
+                    setTimeout(() => {
+                      wx.reLaunch({
+                        url: `/pages/index`
+                      })
+                    }, 2000)
+                  } else {
+                    wx.showToast({
+                      title: data.data.message,
+                      icon: 'none'
+                    })
+                  }
+                }
+              })
+            }
+          }
+        })	
+      }
+    }
+     // 图片上传
+    runUpHotelImgList() {
+      // let count = 3 - this.hotelImgList.length
+      wx.chooseImage({
+        count: 1,
+        sizeType: ['original', 'compressed'],
+        sourceType: ['album', 'camera'],
+        success: res => {
+          wx.showToast({
+            title: '图片上传中',
+            icon: 'loading'
+          })
+          Promise.all(res.tempFiles.map(item => {
+            return new Promise((resolve, reject) => {
+              wx.uploadFile({
+                url: `${this.$parent.globalData.requestUrl}/uploads`,
+                filePath: item.path,
+                name: 'file',
+                header: {
+                  authorization: this.$parent.globalData.token,
+                  apikey: this.$parent.globalData.apikey
+                },
+                success: res => {
+                  resolve({
+                    path: JSON.parse(res.data).data
+                  })
+                }
+              })
+            })
+          })).then(e => {
+            wx.hideToast()
+            this.formNode.verification_file = e
+            this.$apply()
+          }).catch(err => console.log(err))
+        }
+      })
+    }
+       // 图片上传
+    runUpHotelImgList1() {
+      // let count = 3 - this.hotelImgList.length
+      wx.chooseImage({
+        count: 1,
+        sizeType: ['original', 'compressed'],
+        sourceType: ['album', 'camera'],
+        success: res => {
+          wx.showToast({
+            title: '图片上传中',
+            icon: 'loading'
+          })
+          Promise.all(res.tempFiles.map(item => {
+            return new Promise((resolve, reject) => {
+              wx.uploadFile({
+                url: `${this.$parent.globalData.requestUrl}/uploads`,
+                filePath: item.path,
+                name: 'file',
+                header: {
+                  authorization: this.$parent.globalData.token,
+                  apikey: this.$parent.globalData.apikey
+                },
+                success: res => {
+                  resolve({
+                    path: JSON.parse(res.data).data
+                  })
+                }
+              })
+            })
+          })).then(e => {
+            wx.hideToast()
+            this.formNode.verification_file1 = e
+            this.$apply()
+          }).catch(err => console.log(err))
+        }
+      })
+    }
+    events = { }
+    onLoad(options) {
+      this.formNode.type = options.type
+      this.requestImgUrl = this.$parent.globalData.requestImgUrl
+      console.log(this.requestImgUrl)
+      // this.formNode.verification_fileShow+verification_fileShow
+      // this.formNode.verification_file = this.formNode.verification_fileShow
+      this.$apply()
+    }
+    onShow() {
+      this.citySel()
+    }
+    citySel() {
+      let cityList = this.$parent.globalData.registeredCityList
+      let cities = ''
+      let citiesName = ''
+      for (let i = 0; i < cityList.length; i++) {
+        if (cityList[i].sel == '1') {
+          cities += cityList[i].code
+          cities += ','
+          citiesName += cityList[i].fullName
+          citiesName += ','
+        }
+      }
+      cities = cities.substring(0, cities.length - 1)
+      citiesName = citiesName.substring(0, citiesName.length - 1)
+      this.formNode.areasName = citiesName
+      this.formNode.areas = cities
+      this.$apply()
+    }
+  }
+</script>
+<style lang="less">
+.agentCheck{
+  width: 690rpx;
+  padding: 30rpx;
+  .title{
+    color: #1f1f1f;
+    font-size: 28rpx;
+    font-weight: 600;
+    margin-top: 40rpx;
+    display: block;
+  }
+  .rightItem{
+    width: 46%;
+    text{
+      display: block;
+      color: #999999;
+      font-size: 24rpx;
+      margin-top: 20rpx;
+    }
+    image{
+      width: 220rpx;
+      height: 220rpx;
+    }
+    icon{
+      width: 220rpx;
+      height: 220rpx;
+      font-size: 220rpx;
+    }
+  }
+  .logo{
+    width: 152rpx;
+    height: 152rpx;
+    display: block;
+    margin: 0 auto;
+  }
+  .flex{
+    display: flex;
+    justify-content: flex-start;
+  }
+  .content{
+    margin: 20rpx 0;
+    text{
+      display: block;
+      color: #666;
+      font-size: 24rpx;
+      line-height: 44rpx;
+    }
+  }
+  .item{
+    padding-bottom: 24rpx;
+    display: flex;
+    align-items: center;
+    label{
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1f1f1f;
+      margin-right: 20rpx;
+    }
+    .right{
+      width: 490rpx;
+      padding: 10rpx;
+      color: #999;
+      font-size: 30rpx;
+    }
+  }
+  .button{
+    position: fixed;
+    left: 50%;
+    margin-left: -302rpx;
+    bottom: 30rpx;
+    width: 604rpx;
+    background: #F42652;
+    border: none;
+    color: #fff;
+    text-align: center;
+    font-size: 32rpx;
+    font-weight: 600;
+    border-radius: 10rpx;
+    padding: 10rpx 0;
+  }
+}
+</style>

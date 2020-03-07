@@ -1,0 +1,287 @@
+<template>
+  <view class="userNeedDetail">
+    <text class="heading">{{list.title}}</text>
+    <view class="item">
+      <label>{{list.description}}</label>
+    </view>
+    <view class="item">
+      <label>用车时间：</label>
+      <text>{{list.time_start}}~{{list.time_end}}</text>
+    </view>
+    <view class="item">
+      <label>用车地点：</label>
+      <text>{{list.province}} {{list.city}} {{list.district}}</text>
+    </view>
+    <!-- <map id="map" longitude="113.324520" latitude="23.099994" scale="14" controls="{{controls}}" bindcontroltap="controltap" markers="{{markers}}" bindmarkertap="markertap" polyline="{{polyline}}" bindregionchange="regionchange" show-location style="width: 100%; height: 400rpx;margin-top:34rpx;"></map> -->
+    <button class="button" @tap='showModal'>立即邀约</button>
+    <!-- <view class="modal-mask" @tap="hideModal" catchtouchmove="preventTouchMove" wx:if="{{mask}}"></view>
+    <view class="modal-dialog" wx:if="{{mask}}">
+      <text class="payment">支付保证金</text>
+      <text class="price">￥1200</text>
+      <text class="tip">为保证商户与用户间达成信任，商户首次接单需向平台支付保证金，以保证平台、商户、用户三方利益。</text>
+      <button class="goOrder" @tap="marginPay">立即支付</button>
+    </view> -->
+    <cal/>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  import Call from '../components/call' // 客服
+  export default class UserNeedDetail extends wepy.page {
+    config = {
+      navigationBarTitleText: '用户需求'
+    }
+    components = {
+      cal:Call
+    }
+
+    mixins = []
+
+    data = {
+      userInfo: {},
+      mask: false,
+      orderId: '',
+      list: { }
+    }
+
+    computed = {}
+
+    methods = {
+      hideModal() {
+        this.mask = false
+        this.$apply()
+      },
+      showModal() {
+         this.acceptOrder()
+        
+      },
+      // 支付押金
+      marginPay() { 
+        wx.showToast({
+          title: '数据加载...',
+          icon: 'loading',
+          duration: 1000000
+        })
+        wx.request({
+          url: `${this.$parent.globalData.requestUrl}/payment/wechat_deposit_pay`,
+          method: 'GET',
+          header: {
+            Authorization: this.$parent.globalData.token
+            // apikey: this.$parent.globalData.apikey
+          },
+          success: data => {
+            wx.hideToast()
+            data = this.$parent.null2str(data)
+            console.clear()
+            console.log(data)
+            if ( data.data.status_code == 200 ) {
+              let payNode = data.data
+              console.log(payNode)
+              wx.requestPayment({
+                'timeStamp': payNode.timeStamp,
+                'nonceStr': payNode.nonceStr,
+                'package': payNode.package,
+                'signType': payNode.signType,
+                'paySign': payNode.paySign,
+                'success': data => {
+                  wx.hideToast()
+                  wx.showToast({
+                    title: "支付成功",
+                    icon: 'success',
+                    duration: 2000
+                  });
+
+                  // 数据刷新
+                  // // 两秒后返回上一页
+                  // setTimeout(e => {
+                  //   let url = `/pages/paySuccess`
+                  //   this.$navigate(url)
+                  // }, 2000)
+                  // 更新用户信息
+                  this.userInfo.have_margin = 1
+                  this.$parent.globalData.userInfo = this.userInfo
+                  this.mask = false
+                  this.$apply()
+                  // setTimeout(e => {
+                  //   wx.hideToast()
+                  //   // this.upDateUser(id, index)
+                  // }, 2000)
+                  
+                },
+                'fail': data => {
+                  wx.hideToast()
+                  wx.showToast({
+                    title: "充值失败",
+                    icon: 'none',
+                    duration: 2000
+                  });
+                }
+              })
+            }
+          }
+        })
+      },
+      pay() {
+
+      }
+    }
+    events = { }
+    onLoad(e) { 
+      console.log(e.id)
+      this.userInfo = this.$parent.globalData.userInfo
+      this.orderId = e.id
+      this.getInfo()
+    }
+    //获取信息
+    getInfo() {
+       wx.showToast({
+        title: '数据加载...',
+        icon: 'loading',
+        duration: 1000000
+      })
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/posts/${this.orderId}`,
+        method: 'GET',
+        header: {
+          Authorization: this.$parent.globalData.token
+          // apikey: this.$parent.globalData.apikey
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          if ( data.data.status_code == 200 ) {
+            let list = data.data.data
+            list.time_start = this.$parent.transformTime(parseInt(list.time_start) * 1000).split(' ')[0]
+					  list.time_end = this.$parent.transformTime(parseInt(list.time_end) * 1000).split(' ')[0]
+            this.list = list
+            this.$apply()
+          }
+        }
+      })
+    }
+    // 商家接单
+    acceptOrder() { 
+      wx.showToast({
+        title: '数据加载...',
+        icon: 'loading',
+        duration: 1000000
+      })
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/merchants/invite_user/${this.orderId}`,
+        // url: `${this.$parent.globalData.requestUrl}/orders/accept_order/${this.orderId}`,
+        method: 'GET',
+        header: {
+          Authorization: this.$parent.globalData.token
+          // apikey: this.$parent.globalData.apikey
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.clear()
+          console.log(data)
+          if ( data.data.status_code == 200 ) {
+            wx.showToast({
+              title: '邀单成功',
+              icon: 'loading',
+              duration: 1000
+            })
+          }
+        }
+      })
+    }
+  }
+</script>
+<style lang="less">
+.userNeedDetail{
+  width: 690rpx;
+  padding: 30rpx;
+  .heading{
+    color: #1F1F1F;
+    font-size: 32rpx;
+    font-weight: 600;
+    display: block;
+    margin: 30rpx 0 20rpx;
+  }
+  .item{
+    margin-bottom: 10rpx;
+    label,text{
+      color: #666666;
+      font-size: 28rpx;
+    }
+    text{
+      display: inline-block;
+      margin-left: 10rpx;
+    }
+  }
+  .button{
+  	position: fixed;
+		bottom: 30rpx;
+		left: 75rpx;
+		width: 600rpx;
+		padding: 10rpx 0;
+		text-align: center;
+		color: #fff;
+		background-color: #F42652 !important;
+		border-radius: 10rpx;
+    font-size: 32rpx;
+    font-weight: 600
+  }
+}
+// .modal-mask { 
+// 		width: 100%; 
+// 		height: 100%; 
+// 		position: fixed; 
+// 		top: 0; 
+// 		left: 0; 
+// 		background: #000; 
+// 		opacity: 0.5; 
+// 		overflow: hidden; 
+//     z-index: 9000;
+// 	}
+// 	.modal-dialog { 
+// 		width: 670rpx; 
+// 		padding:40rpx;
+// 		overflow: hidden; 
+// 		position: fixed; 
+// 		left: 0; 
+// 		right: 0;
+// 		bottom: 0;
+// 		margin: 0 auto; 
+// 		z-index: 9999; 
+// 		background: rgba(255, 255, 255, 1); 
+//     border-radius: 10rpx 10rpx 0 0; 
+//     .price{
+//       color: #F42652;
+//       font-size: 40rpx;
+//       font-weight: 600;
+//       text-align: center;
+//       margin: 30rpx 0;
+//     }
+//     .tip{
+//       color: #333333;
+//       font-size: 28rpx;
+//       margin-bottom: 50rpx;
+//     }
+//     text{
+//       display: block;
+//     }
+//     .payment{
+//       font-size: 32rpx;
+//       color: #333;
+//       text-align: center;
+//       font-weight: 600;
+//     }
+//     .goOrder{
+//       width: 600rpx;
+//       padding: 10rpx 0;
+//       text-align: center;
+//       margin: 0 35rpx;
+//       color: #fff;
+//       background-color: #F42652 !important;
+//       border-radius: 10rpx;
+//       font-size: 32rpx;
+//       font-weight: 600
+//     }
+//   } 
+</style>

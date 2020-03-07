@@ -1,0 +1,276 @@
+<template>
+  <view>
+    <view class="item">
+      <label>标题</label>
+      <input type="text" @input="getSetData" data-name="title" placeholder="请输入标题" />
+    </view>
+    <view class="item">
+      <label>描述</label>
+      <textarea @input="getSetData" data-name="content" placeholder="请输入服务描述"></textarea>
+    </view>
+    <!-- <view class="title">
+      上传图片
+      <text>(最多上传6张)</text>
+    </view>
+    <view class="imgList">
+      <repeat for="{{hotelImgList}}" item="item">
+        <image src="{{item.path.image_url}}" />
+      </repeat>
+      <icon class="iconfont iconchuanzhaopian" @tap="upHotelImgList" wx:if="{{hotelImgList.length < 6}}"></icon>
+    </view> -->
+    <view class="sub" @tap='submit'>
+      <view>发布</view>
+    </view>
+    <cal />
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  import Call from '../components/call' // 客服
+  export default class PostChange extends wepy.page {
+    config = {
+      navigationBarTitleText: '发帖'
+    }
+    components = {
+      cal: Call
+     }
+
+    mixins = []
+
+    data = {
+      userInfo: null,
+      formNode: {
+        title: '',     // 标题
+        content: ''    // 描述
+      },
+      hotelImgList: [],             // 上传图片列表
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      // 表单数据获取
+      getSetData(e) {
+        let formNode = this.formNode
+        let name = e.currentTarget.dataset.name
+        let value = e.detail.value
+        formNode[name] = value
+        this.formNode = formNode
+        console.log(formNode)
+        this.$apply()
+      },
+      // 上传图片
+      upHotelImgList() {
+        this.runUpHotelImgList()
+      }
+    }
+
+    events = {
+
+    }
+
+    onLoad(e) {
+      this.$apply()
+      // this.calendarInit()
+    }
+    onShow() {
+    }
+    // 图片上传
+    runUpHotelImgList() {
+      let count = 9 - this.hotelImgList.length
+      wx.chooseImage({
+        count: count,
+        sizeType: ['original', 'compressed'],
+        sourceType: ['album', 'camera'],
+        success: res => {
+          wx.showToast({
+            title: '图片上传中',
+            icon: 'loading'
+          })
+          Promise.all(res.tempFiles.map(item => {
+            return new Promise((resolve, reject) => {
+              wx.uploadFile({
+                url: `${this.$parent.globalData.requestUrl}/upload/upload_file`,
+                filePath: item.path,
+                name: 'file',
+                header: {
+                  authorization: this.$parent.globalData.token,
+                  apikey: this.$parent.globalData.apikey
+                },
+                success: res => {
+                  resolve({
+                    path: JSON.parse(res.data).data
+                  })
+                }
+              })
+            })
+          })).then(e => {
+            wx.hideToast()
+            this.hotelImgList = this.hotelImgList.concat(e)
+            let hotelImgList = this.hotelImgList
+            console.log(this.hotelImgList)
+            let hotel_image = ''
+            for (let i = 0; i < hotelImgList.length; i++) {
+              hotel_image += '|'
+              hotel_image += hotelImgList[i].path.image_id
+            }
+            hotel_image = hotel_image.substr(1)
+            this.formNode['hotel_image'] = hotel_image
+            this.$apply()
+          }).catch(err => console.log(err))
+        }
+      })
+    }
+    //发布
+    submit() {
+      let formNode = this.formNode
+      console.log(this.formNode)
+      if (formNode.title == "") {
+        wx.showToast({
+          title: '请输入标题',
+          icon: 'none'
+        })
+        return
+      }
+      if (formNode.content == "") {
+        wx.showToast({
+          title: '请输入描述',
+          icon: 'none'
+        })
+        return
+      }
+      wx.showToast({
+        title: '发布中...',
+        icon: 'loading',
+        duration: 10000
+      })
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/peer_swap/send`,
+        method: 'POST',
+        header: {
+          authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        data: formNode,
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.log(data)
+          if (data.data.status_code === 201) {
+            wx.showToast({
+              title: "互换已提交平台审核",
+              icon: 'none',
+              duration: 2000
+            })
+            setTimeout(() => {
+              wx.navigateBack({
+                delta: -1
+              })
+            }, 2000)
+          } else {
+            wx.showToast({
+              title: '发布失败',
+              icon: 'none'
+            })
+          }
+        }
+      })
+    }
+  }
+</script>
+<style lang="less">
+  .com{
+    padding-bottom: 120rpx;
+  }
+  .item{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    // align-items: center;
+    justify-content: space-between;
+    view{
+      width: 660rpx;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    label{
+      width: 120rpx;
+      padding-right: 20rpx;
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1F1F1F;
+    }
+    text{
+      width: 500rpx;
+      font-size: 30rpx;
+      color: #333;
+    }
+    icon{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30rpx;
+      height: 30rpx;
+      font-size: 30rpx;
+      color: #1F1F1F;
+    }
+    input{
+      width: 552rpx;
+    }
+    textarea{
+      width: 530rpx;
+      height: 160rpx;
+      padding: 10rpx;
+      border-radius: 10rpx;
+      border: 1rpx solid #DFDFDF;
+    }
+  }
+  .title{
+    width: 690rpx;
+    height: auto;
+    padding: 30rpx;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1F1F1F;
+    text{
+      font-size: 28rpx;
+      font-weight: 500;
+      color: #999999;
+    }
+  }
+   .imgList{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    .iconchuanzhaopian{
+      font-size: 214rpx;
+      height: 214rpx;
+      width: 214rpx;
+    }
+    image{
+      width: 214rpx;
+      height: 214rpx;
+      margin: 10rpx 21rpx 10rpx 0;
+      border-radius: 10rpx;
+    }
+    image:nth-child(3n){
+      margin-right: 0;
+    }
+  }
+  .button{
+    margin-bottom: 220rpx;
+  }
+</style>

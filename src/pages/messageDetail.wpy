@@ -1,0 +1,130 @@
+<template>
+  <view class="message">
+		<view class="messagrList">
+			<repeat for="{{messageList}}" item="item">
+				<view class="item" @tap="goMessageInfo">
+					<view class="itemHead">
+						<text class="itemHeadTitle">{{item.type}}</text>
+						<text class="itemHeadTime">{{item.time}}</text>
+					</view>
+					<text class="content">{{item.content}}</text>
+				</view>
+			</repeat>
+		</view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  export default class MessageDetail extends wepy.page {
+    config = {
+      navigationBarTitleText: '消息'
+    }
+    components = {
+    }
+
+    mixins = []
+
+    data = {
+      messageList: [
+				{ id:'1', type:'订单信息', time:'2019/01/02',content:'11111111111111111111111111111' },
+				{ id:'1', type:'订单信息', time:'2019/01/02',content:'11111111111111111111111111111' },
+				{ id:'1', type:'订单信息', time:'2019/01/02',content:'11111111111111111111111111111' }
+			],
+      collectionStr: false,
+      col: 2,
+      info: {},
+      current_page: 1,
+      last_page: 0
+    }
+
+    computed = {}
+
+    methods = {
+    }
+    onLoad(options) {
+      this.getMessageDetail(options.id)
+    }
+    getMessageDetail(id) {
+      wx.showToast({
+        title: '数据加载...',
+        icon: 'loading',
+        duration: 1000000
+      })
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/messages/${id}`,
+        method: 'POST',
+        header: {
+          Authorization: this.$parent.globalData.token
+          // apikey: this.$parent.globalData.apikey
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.log(data)
+          // if ( data.statusCode == 200 ) {
+          //   this.messageDetail = ''
+          //   this.$apply()
+          // }
+        }
+      })
+    }
+        // 下拉刷新
+    onPullDownRefresh() {
+      wx.showToast({
+        title: '拼命加载中...',
+        icon: 'loading',
+        duration: 1000000
+      })
+      // 获取liebiao
+      this.communicate()
+    }
+    // 下拉加载
+    onReachBottom() { 
+      this.current_page++
+      this.communicate()
+    }
+    // 用户信息校验
+    verificationUserInfo() {
+      if (!this.userInfo.hasOwnProperty('id')) {
+        wx.showToast({
+          title: '用户信息加载中... ',
+          icon: 'none'
+        })
+        return true
+      }
+    }
+  }
+</script>
+<style lang="less">
+  .messagrList{
+		width: 750rpx;
+		.item{
+			width:690rpx;
+			padding: 30rpx;
+			.itemHead{
+				display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        .itemHeadTitle{
+          font-size: 32rpx;
+          font-weight: 600;
+          color: #1f1f1f;
+        }
+        .itemHeadTime{
+          font-size: 24rpx;
+          color: #666;
+        }
+				text{
+					display: block;
+				}
+			}
+			.content{
+				margin-top: 14rpx;
+        display: block;
+        font-size: 28rpx;
+        color: #666;
+			}
+		}
+	}
+</style>

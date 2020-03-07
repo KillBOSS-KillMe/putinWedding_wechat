@@ -1,0 +1,191 @@
+<template>
+  <view class="more">
+    <checkbox-group bindchange="checkboxChange">
+      <repeat for="{{list}}" item="item">
+        <label class="checkbox item">
+          <checkbox value="{{index}}" checked="{{item.flag}}"/>
+          <image class="img" src="{{requestImgUrl + item.images[0].path}}" />
+          <view class="right">
+            <text class="title">{{item.title}}</text>
+            <text class="content">{{item.description}}</text>
+            <text class="content">{{item.updated_at}}</text>
+          </view>
+        </label>
+      </repeat>
+    </checkbox-group>
+    <view wx:if='{{list.length == 0}}' class="none">
+      <icon class="iconfont iconc-kongzhuangtai"></icon>
+      <text>没有找到相关商品信息</text>
+    </view>
+    <button class="qd" @tap="define">确定</button>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  export default class More extends wepy.page {
+    config = {
+      navigationBarTitleText: '选择套餐'
+    }
+    components = {
+    }
+
+    mixins = []
+
+    data = {
+      list: [],
+      requestImgUrl:'',
+      id: '',
+      moreList: [],
+      newMoreList: [],
+      current_page: 1,
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      define() {
+        this.$parent.globalData.moreList = this.list.filter(item => item.flag)
+        wx.navigateBack({
+          delta: -1
+        })
+      },
+      checkboxChange(e) {
+        let listKey = e.detail.value
+        var list = this.list
+        list.forEach(item => item.flag = false)
+        listKey.forEach(ele => {
+          list[ele].flag = true               
+        })
+        this.list = list
+        this.$apply()
+      }
+    }
+    events = {
+
+    } 
+    onLoad() {
+      this.requestImgUrl = this.$parent.globalData.requestImgUrl
+      this.moreList = this.$parent.globalData.moreList || []
+      this.getList()
+      this.$apply
+    } 
+    getList() {
+       wx.request({
+        url: `${this.$parent.globalData.requestUrl}/merchant/services_list`,
+        header: {
+          authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        method: 'GET',
+        data:{
+          page: this.current_page,
+          page_size: 10
+        },
+        success: data => {
+          data = this.$parent.null2str(data)
+          if (data.data.status_code === 200) {
+            let list = data.data.data.data
+            this.moreList.forEach(ele=> {
+              list.forEach(item => {
+                if(ele.id == item.id) {
+                  item.flag = true
+                }
+              })
+            })
+            this.list = this.list.concat(list)
+            this.current_page = data.data.data.current_page
+            this.$apply()
+          } else{
+            console.log(data)
+          }
+        }
+      })
+    }
+    
+      // 下拉加载
+    onReachBottom() {
+      this.current_page ++
+      this.getList()
+    }
+    onUnload() {
+      
+    }
+  }
+</script>
+<style lang="less">
+.more{
+  width: 690rpx;
+  padding: 30rpx;
+  .img{
+    width: 180rpx;
+    height: 130rpx;
+    overflow: hidden;
+    margin: 0 20rpx;
+    border-radius: 10rpx;
+  }
+  .item{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30rpx;
+    .right{
+      width: 380rpx;
+      text{
+        display: block;
+      }
+      .title{
+        font-size: 30rpx;
+        color: #000;
+      }
+      .content{
+        font-size: 28rpx;
+        color: #000;
+        margin-top: 10rpx;
+        word-wrap:break-word
+      }
+    }
+  }
+}
+// 重写多选框样式
+label.checkbox {
+    padding-left: 20rpx;
+}
+checkbox .wx-checkbox-input{
+    width: 32rpx;
+    height: 34rpx;
+}
+
+// 选中后多选框样式
+checkbox .wx-checkbox-input.wx-checkbox-input-checked{
+    border: 1rpx solid #F42652;
+    background-color: transparent;
+}
+
+// 选中后对勾样式
+checkbox .wx-checkbox-input.wx-checkbox-input-checked::before{
+    width: 32rpx;
+    height: 34rpx;
+    line-height: 34rpx;
+    text-align: center;
+    font-size:30rpx;
+    color:#F42652;
+    background: transparent;
+}
+.qd{
+  width: 100%;
+  background: #F42652;
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 600;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  border: none;
+  height: 100rpx;
+  line-height: 100rpx;
+  border-radius: 0;
+}
+</style>

@@ -1,0 +1,356 @@
+<template>
+  <view class="container">
+    <view class="search">
+      <input type="text" placeholder="请输入搜索内容" @input="getSearchKey" value="{{inputValue}}" />
+      <icon class="iconfont iconsousuo" @tap="getSearch" data-key="{{inputValue}}"></icon>
+    </view>
+    <!-- <view class="list">
+      <repeat for="{{list.data}}" item="item">
+        <view class="item" data-id='{{item.user_id}}' @tap="goShopDetails">
+          <image src="{{item.images}}" />
+          <view class="info">
+            <view>
+              <text class="name">{{item.weixin_username}}</text>
+            </view>
+            <view>{{item.store_name}}</view>
+            <view>
+              <text class="price">{{item.store_name}}</text>
+              <text class="user">{{item.address}}</text>
+            </view>
+          </view>
+        </view>
+      </repeat>
+      <view class="listNull" wx:if="{{list.length==0}}">暂无数据</view>
+    </view> -->
+    <!-- <view class="list">
+      <view class="choice">
+        <repeat for="{{listNode.data}}" item="item">
+          <view class="item" data-uid="{{item.user_id}}" data-check="{{item.is_check}}" data-id="{{item.id}}" @tap="peopleDetail">
+            <image src="../image/allMerchant.png" />
+            <view class="name" style="text-align:left;">{{item.title}}</view>
+          </view>
+        </repeat>
+      </view>
+    </view> -->
+    
+
+
+    <view class="list">
+      <repeat for="{{listNode.data}}" item="item">
+        <view class="item">
+          <image src="{{requestImgUrl+item.images[0].path}}" />
+          <view class="info">
+            <view>
+              <!-- <text class="type" >{{item.weixin_username}}</text> -->
+              <text class="name">{{item.title}}</text>
+            </view>
+            <view class="over">{{item.description}}</view>
+            <view class="list_view">
+              <view class="view">
+                <text class="price">￥{{item.amount}}</text>
+                <text class="user">{{item.serviceArea}}</text>
+              </view>
+              <text class="goShop" data-id='{{item.id}}' @tap="peopleDetail">查看</text>
+              <text class="goShop" data-id='{{item.user_id}}' @tap="goShop">进店</text>
+            </view>
+            
+          </view>
+        </view>
+      </repeat>
+      <view wx:if='{{listNode.length == 0}}' class="none">
+        <icon class="iconfont iconc-kongzhuangtai"></icon>
+        <text>没有找到相关商品信息</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  export default class ServicesList extends wepy.page {
+    config = {
+      navigationBarTitleText: '服务'
+    }
+    components = {}
+
+    mixins = []
+
+    data = {
+      listNode: null,
+      inputValue: '',
+      current_page: 1,
+      requestImgUrl: ''
+    }
+
+    computed = {
+      
+    }
+
+    methods = {
+      // 搜索输入监听
+      getSearchKey(e) {
+        this.inputValue = e.detail.value
+        if(this.inputValue == '') {
+          this.getList()
+        }
+      },
+      goShop(e) {
+        let id = e.currentTarget.dataset.id
+        let url = `/pages/shop?id=${id}`
+        this.$navigate(url)
+      },
+      // 进入服务详情
+      peopleDetail(e) {
+        let id = e.currentTarget.dataset.id
+        let url = `/pages/productDetail?id=${id}`
+        this.$navigate(url)
+      },
+      //搜索
+      getSearch(e) {
+        this.inputValue = e.currentTarget.dataset.key
+        if (this.inputValue != '') {
+          this.list = []
+          this.current_page = 1
+          this.getListData()
+        }
+      }
+    }
+
+    events = {
+      
+    }
+
+    onLoad() {
+      this.getList()
+      this.requestImgUrl = this.$parent.globalData.requestImgUrl
+    }
+    //获取列表
+    getList() {
+      wx.showToast({
+        title: "数据加载...",
+        icon: 'loading',
+        duration: 1000000
+      });
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/services_list`,
+        method: 'GET',
+        header: {
+          Authorization: this.$parent.globalData.token
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          if (data.statusCode == 200) {
+            this.listNode = data.data.data
+            this.$apply()
+          }
+        }
+      })
+    }
+     // 搜索
+    getListData() {
+    //请求搜索
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/search`,
+        header: {
+          authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        method: 'GET',
+        data: {
+          keywords: this.inputValue,
+          page: this.current_page,
+          page_size: 20,
+          type: 'service'
+        },
+        success: data => {
+          data = this.$parent.null2str(data)
+          if (data.data.status_code == 200 || data.data.status_code == 201) {
+            this.listNode = data.data.data
+            console.log(this.listNode)
+            this.$apply()
+          } else if (data.data.status_code == 400) {
+            this.listNode = data.data.data
+            console.log(this.listNode)
+            this.$apply()
+          }
+        }
+      })
+    }
+    getAllList() {
+      if (this.listNode.next_page_url == '') {
+        wx.showToast({
+          title: "没有更多数据了",
+          icon: 'none'
+        })
+        return false
+      }
+      wx.showToast({
+        title: "数据加载...",
+        icon: 'loading',
+        duration: 1000000
+      });
+      wx.request({
+        url: this.listNode.next_page_url,
+        method: 'GET',
+        header: {
+          Authorization: this.$parent.globalData.token
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          if (data.statusCode == 200) {
+            let node = data.data.data
+            let list = this.listNode.data
+            list = list.concat(node.data)
+            this.listNode = node
+            this.listNode.data = list
+            this.$apply()
+          }
+        }
+      })
+    }
+
+    // 下拉加载
+    onReachBottom(){
+      this.getAllList()
+    }
+  }
+</script>
+<style lang="less">
+.container{
+    border-top: 1rpx solid #EEEEEE;
+    width: 750rpx;
+    height: auto;
+  }
+  .search{
+    width: 688rpx;
+    height: 76rpx;
+    border-radius: 76rpx;
+    border: 1rpx solid #EEEEEE;
+    margin: 10rpx 30rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    input{
+      width: 576rpx;
+      height: 70rpx;
+      font-size: 28rpx;
+      color: #1F1F1F;
+    }
+    icon{
+      width: 70rpx;
+      height: 70rpx;
+      font-size: 34rpx;
+      color: #999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+.list{
+    width: 690rpx;
+    height: auto;
+    padding: 0 30rpx;
+    .item{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20rpx 0;
+      border-bottom: 1rpx solid #EEEEEE;
+    }
+    image{
+      width: 200rpx;
+      height: 150rpx;
+      border-radius: 10rpx;
+    }
+    .info{
+      width: 470rpx;
+      // height: 150rpx;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-direction: column;
+      .list_view{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        .view{
+          width: 260rpx;
+          padding: 4rpx 0;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+        }
+        
+      }
+    }
+    .name{
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1F1F1F;
+    }
+    .type{
+      color: #F42652;
+      font-size: 20rpx;
+      padding: 5rpx 10rpx;
+      border: 1rpx solid #F42652;
+      border-radius: 5rpx;
+      margin-right: 10rpx;
+    }
+    .price{
+      color: #F42652;
+      font-size: 26rpx;
+      font-weight: 600;
+      margin-right: 10rpx;
+    }
+    .user{
+      font-size: 24rpx;
+      color: #999999;
+    }
+  }
+.choice .item:nth-child(3n){
+      margin-right: 0;
+    }
+    .choice{
+      // width: 690rpx;
+      padding: 20rpx 0 0;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      view{
+        width: 320rpx;
+        margin-bottom: 18rpx;
+        image{
+          width: 320rpx;
+          height: 320rpx;
+          border-radius: 10rpx 10rpx 0 0;
+        }
+      }
+      .name,.price{
+        text-align: center;
+      }
+    }
+.goShop{
+  font-size: 25rpx;
+  color: #fff;
+  background: #F42652;
+  border-radius: 10rpx;
+  display: block;
+  padding: 8rpx 16rpx;
+  // width: 104rpx;
+  text-align: center;
+
+}
+.over{
+  color: #494949;
+  font-size: 24rpx;
+  margin: 14rpx 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+</style>

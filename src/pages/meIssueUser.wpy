@@ -1,0 +1,358 @@
+<template>
+	<view class="meIssueUser">
+		<view class="nav">
+			<text class="{{1 == currentIndex ? 'cur' : ' '}}" @tap='titleClick' data-idx='1'>我的需求</text>
+			<text class="{{2 == currentIndex ? 'cur' : ' '}}" @tap='titleClick' data-idx='2'>我的心情</text>
+		</view>
+		<view class="meIssuePosList" current='{{currentIndex}}' wx:if='{{currentIndex==1}}'>
+			<repeat for="{{postsNode.data}}" item="item">
+				<view class="item" data-id="{{item.id}}">
+					<view class="meIssueUserInfo">
+						<view class="itemHead">
+							<text class="title">{{item.title}}</text>
+							<!-- <text class="type"  style="color:#4CADFE">{{item.status}}</text> -->
+							<!-- <text class="type" wx:if="{{item.type=='2'}}" style="color:#F42652">未接单</text> -->
+						</view>
+						<text class="content">{{item.description}}</text>
+						<!-- <text class="content">开始时间：{{item.time_start}}</text>
+						<text class="content">结束时间：{{item.time_end}}</text>
+						<text class="content">城市：{{item.province + item.city + item.district}}</text>
+						<text class="content">详细地址：{{item.address}}</text> -->
+						<view class="itemBootm">
+							<text class="address">{{item.province}}{{item.city}}{{item.district}}</text>
+							<text class="time">{{item.time_start}}~{{item.time_end}}</text>
+						</view>
+					</view>
+				</view>
+			</repeat>
+			<view wx:if='{{postsNode.length == 0}}' class="none">
+        <icon class="iconfont iconc-kongzhuangtai"></icon>
+        <text>没有找到相关信息</text>
+      </view>
+		</view>
+		<view class="meIssuePosList" current='{{currentIndex}}' wx:else>
+			<repeat for="{{circlesNode.data}}" item="item">
+				<view class="item">
+					<view class="meIssueUserInfo" style="width:690rpx;">
+						<view class="itemHead">
+							<view class="info">
+								<image src='{{userInfo.avatarUrl}}'>
+								<text class="title">{{userInfo.nickName}}</text>
+							</view>
+							<text class="time">{{item.created_at}}</text>
+						</view>
+						<text class="content">{{item.content}}</text>
+						<view class="imgList">
+							<repeat for="{{item.media_paths}}" item="itemImg">
+								<image src="{{requestImgUrl+itemImg}}">
+							</repeat>
+						</view>
+					</view>
+				</view>
+			</repeat>
+			<view wx:if='{{circlesNode.length == 0}}' class="none">
+        <icon class="iconfont iconc-kongzhuangtai"></icon>
+        <text>没有找到相关信息</text>
+      </view>
+			<!-- <view class="listNull" wx:if="{{list.length == 0}}">暂未发布心情</view> -->
+		</view>
+		<cal></cal>
+	</view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import Call from '../components/call' // 客服
+export default class MeIssueUser extends wepy.page {
+  config = {
+    navigationBarTitleText: '我的发布'
+	}
+	components = {
+		cal: Call
+	}
+  data = {
+		postsNode: {
+			data: []
+		},
+		circlesNode: null,
+		currentIndex: 1,
+		requestImgUrl: '',
+		userInfo: {}
+	}
+	titleClick (e) {
+		this.currentIndex = e.currentTarget.dataset.idx
+    this.current_page = 1
+		this.$apply()
+		if (this.currentIndex == 1) {
+			// 加载需求列表
+			this.getPostsList()
+		} else {
+			// 加载心情列表
+			this.getCirclesList()
+		}
+	}
+	methods = {
+
+	}
+	onLoad() {
+		this.userInfo = this.$parent.globalData.userInfo
+		this.requestImgUrl = this.$parent.globalData.requestImgUrl
+		// 加载需求列表
+		this.getPostsList()
+	}
+	//下拉加载
+	onReachBottom(){
+		if (this.currentIndex == 1) {
+			// 加载需求列表
+			this.getAllPostsList()
+		} else {
+			// 加载心情列表
+			this.getAllCirclesList()
+		}
+	}
+	// 加载需求列表
+	getPostsList() {
+		wx.request({
+			url: `${this.$parent.globalData.requestUrl}/user/posts`,
+			header: {
+				authorization: this.$parent.globalData.token,
+				apikey: this.$parent.globalData.apikey
+			},
+			method: 'GET',
+			success: data => {
+				data = this.$parent.null2str(data)
+				console.log(data.data)
+				if (data.data.status_code === 200) {
+					this.postsNode = null
+					let list = data.data.data.data
+					for (let i = 0; i < list.length; i++) {
+						list[i].time_start = this.$parent.transformTime(parseInt(list[i].time_start) * 1000).split(' ')[0]
+						list[i].time_end = this.$parent.transformTime(parseInt(list[i].time_end) * 1000).split(' ')[0]
+					}
+					this.postsNode = data.data.data
+					this.postsNode.data = list
+					this.$apply()
+				} else if(data.data.status_code == 400) {
+					this.postsNode = data.data.data
+					this.$apply()
+				}
+			}
+		})
+	}
+	// 加载心情列表
+	getCirclesList() {
+		wx.request({
+			url: `${this.$parent.globalData.requestUrl}/user/circles`,
+			header: {
+				authorization: this.$parent.globalData.token,
+				apikey: this.$parent.globalData.apikey
+			},
+			method: 'GET',
+			success: data => {
+				data = this.$parent.null2str(data)
+				if (data.data.status_code === 200) {
+					this.circlesNode = null
+					this.circlesNode = data.data.data
+					this.$apply()
+				} else if(data.data.status_code == 400) {
+					this.circlesNode = null
+					this.circlesNode = data.data.data
+					this.$apply()
+				}
+			}
+		})
+	}
+
+	// 加载需求列表--翻页
+	getAllPostsList() {
+		if (this.postsNode.next_page_url == "") {
+			wx.showToast({
+        title: '没有更多了',
+        icon: 'none',
+        duration: 3000
+			})
+			return false
+		}
+		wx.showToast({
+			title: '拼命加载中...',
+			icon: 'loading',
+			duration: 1000000
+		})
+		wx.request({
+			url: this.postsNode.next_page_url,
+			header: {
+				authorization: this.$parent.globalData.token,
+				apikey: this.$parent.globalData.apikey
+			},
+			method: 'GET',
+			success: data => {
+				wx.hideToast()
+				data = this.$parent.null2str(data)
+				if (data.data.status_code === 200) {
+					this.postsNode = data.data.data
+					let list = this.postsNode.data
+					let newList = data.data.data.data
+					for (let i = 0; i < newList.length; i++) {
+						newList[i].time_start = this.$parent.transformTime(parseInt(newList[i].time_start) * 1000).split(' ')[0]
+						newList[i].time_end = this.$parent.transformTime(parseInt(newList[i].time_end) * 1000).split(' ')[0]
+					}
+					list = list.concat(newList)
+					this.postsNode = data.data.data
+					this.postsNode.data = list
+					this.$apply()
+				}
+			}
+		})
+	}
+	// 加载心情列表--翻页
+	getAllCirclesList() {
+		if (this.circlesNode.next_page_url == "") {
+			wx.showToast({
+        title: '没有更多了',
+        icon: 'none',
+        duration: 3000
+			})
+			return false
+		}
+		wx.showToast({
+			title: '拼命加载中...',
+			icon: 'loading',
+			duration: 1000000
+		})
+		wx.request({
+			url: this.circlesNode.next_page_url,
+			header: {
+				authorization: this.$parent.globalData.token,
+				apikey: this.$parent.globalData.apikey
+			},
+			method: 'GET',
+			success: data => {
+				wx.hideToast()
+				data = this.$parent.null2str(data)
+				console.log(data)
+				if (data.data.status_code === 200) {
+					this.circlesNode = data.data.data
+					let list = this.circlesNode.data
+					list = list.concat(data.data.data.data)
+					this.circlesNode = data.data.data
+					this.circlesNode.data = list
+					this.$apply()
+				}
+			}
+		})
+	}
+}
+</script>
+<style lang="less">
+.meIssueUser{
+	width: 750rpx;
+	.nav{
+		width: 690rpx;
+		// padding: 0 30rpx;
+		display: flex;
+		justify-content: space-around;
+		padding: 0 30rpx;
+		border-bottom: 10rpx solid #f8f8f8;
+		text{
+			padding: 30rpx 0;
+			color: #999999;
+			font-size: 32rpx;
+			font-weight: 600;
+			text-align: center;
+		}
+		.cur{
+			color: #1F1F1F;
+			// border-bottom: 4rpx solid #F42652;
+		}
+	}
+	.item{
+		// margin-bottom: 40rpx;
+		display: flex;
+		justify-content: space-between;	
+		align-content: space-between;
+		padding: 30rpx;
+		border-bottom: 10rpx solid #f8f8f8;
+		// image{
+		// 	width:200rpx;
+		// 	height: 150rpx;
+		// 	border-radius: 10rpx
+		// }
+		.meIssueUserInfo{
+			// width: 450rpx;
+			width: 690rpx;
+			.itemHead{
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				.info{
+					display: flex;
+					justify-content: flex-start;
+					align-items: center;
+				}
+				.time{
+					color: #333333;
+					font-size: 24rpx;
+				}
+				image{
+					width: 62rpx;
+					height: 62rpx;
+					border-radius: 50%;
+					margin-right: 26rpx;
+				}
+				.title{
+					color: #1F1F1F;
+					font-size: 30rpx;
+					font-weight: 600;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+				}
+				.type{
+					color: #F42652;
+					font-size: 28rpx;
+				}
+			}
+			.content{
+				font-size: 28rpx;
+				color: #333333;
+				text-overflow: ellipsis;
+				white-space: normal;
+				overflow: hidden;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				margin: 18rpx 0 24rpx;
+			}
+			.itemBootm{
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				.address{
+					font-size: 28rpx;
+					font-weight: 600;
+					color: #333333;
+				}
+				.time{
+					font-size: 24rpx;
+					color: #666666;
+				}
+			}
+		}
+	}
+	.imgList{
+		display: flex;
+		justify-content: flex-start;
+		flex-wrap: wrap;
+		image{
+			width: 216rpx;
+			height: 216rpx;
+			border-radius: 10rpx;
+			margin-right: 20rpx;
+			margin-bottom: 26rpx;
+		}
+	}
+}
+.imgList>image:nth-child(3n){
+	margin: 0;
+}
+</style>

@@ -1,0 +1,172 @@
+{
+	"description": "项目配置文件",
+	"packOptions": {
+		"ignore": []
+	},
+	"setting": {
+		"urlCheck": true,
+		"es6": false,
+		"postcss": false,
+		"minified": true,
+		"newFeature": true,
+		"coverView": true,
+		"autoAudits": false,
+		"checkInvalidKey": true,
+		"checkSiteMap": false,
+		"uploadWithSourceMap": true,
+		"babelSetting": {
+			"ignore": [],
+			"disablePlugins": [],
+			"outputPath": ""
+		}
+	},
+	"compileType": "miniprogram",
+	"libVersion": "2.8.3",
+	"appid": "wx8934a8d454fb5bc0",
+	"projectname": "putinwedding",
+	"miniprogramRoot": "dist/",
+	"cloudfunctionTemplateRoot": "",
+	"debugOptions": {
+		"hidedInDevtools": []
+	},
+	"scripts": {},
+	"simulatorType": "wechat",
+	"simulatorPluginLibVersion": {},
+	"condition": {
+		"search": {
+			"current": -1,
+			"list": []
+		},
+		"conversation": {
+			"current": -1,
+			"list": []
+		},
+		"plugin": {
+			"current": -1,
+			"list": []
+		},
+		"game": {
+			"list": []
+		},
+		"gamePlugin": {
+			"current": -1,
+			"list": []
+		},
+		"miniprogram": {
+			"current": -1,
+			"list": [
+				{
+					"id": 0,
+					"name": "pages/time",
+					"pathName": "pages/time",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": 1,
+					"name": "pages/sendMood",
+					"pathName": "pages/sendMood",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/citySel",
+					"pathName": "pages/citySel",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/shop",
+					"pathName": "pages/shop",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/shop",
+					"pathName": "pages/shop",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/shop",
+					"pathName": "pages/shop",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/postProvideMore",
+					"pathName": "pages/postProvideMore",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/more",
+					"pathName": "pages/more",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/postMoreDetail",
+					"pathName": "pages/postMoreDetail",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/meCash",
+					"pathName": "pages/meCash",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/postMoreChange",
+					"pathName": "pages/postMoreChange",
+					"query": "id=4",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/more",
+					"pathName": "pages/more",
+					"query": "id=4",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/needRelease",
+					"pathName": "pages/needRelease",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/postProvide",
+					"pathName": "pages/postProvide",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/checkIn",
+					"pathName": "pages/checkIn",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "pages/registeredSel",
+					"pathName": "pages/registeredSel",
+					"scene": null
+				}
+			]
+		}
+	}
+}

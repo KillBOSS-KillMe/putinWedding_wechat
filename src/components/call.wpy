@@ -1,0 +1,134 @@
+<template>
+  <!-- <view class="call" @tap="phone">客服</view> -->
+  <view>
+    <view class="call">
+      <image @tap="tipShow" src="../image/tel.png"/>
+    </view>
+    <view class="model" wx:if="{{!mask}}" catchtouchmove="true"></view>
+    <view class="modelContent" wx:if="{{!mask}}" catchtouchmove="true">
+      <text @tap="phone">客服热线：{{info.phone}}</text>
+      <text>客服微信：{{info.weixin}}</text>
+      <button open-type="contact" session-from="weapp">
+        <icon class="iconfont iconkefu1"></icon>微信客服
+      </button>
+      <text class='clear' @tap="clear">取消</text>
+    </view>
+  </view>
+  
+</template>
+<script>
+import wepy from 'wepy'
+export default class Call extends wepy.component {
+  // mixins = [check]
+  data = {
+    info:'',
+    mask: true,
+  };
+  props = {};
+  methods = {
+    tipShow() {
+      this.mask = false;
+    },
+    clear(){
+      this.mask = true;
+    },
+    phone() {
+      console.log("++++++++++")
+      let tell = this.info.phone 
+      console.log(tell)
+      wx.makePhoneCall({
+        phoneNumber: tell+'',
+      })
+    }
+  };
+  onLoad() {
+    wx.request({
+      url: `${this.$parent.$parent.globalData.requestUrl}/customer_service`,
+      header: {
+        authorization: this.$parent.$parent.globalData.token,
+        apikey: this.$parent.$parent.globalData.apikey
+      },
+      method: 'GET',
+      success: data => {
+        data = this.$parent.$parent.null2str(data)
+        console.log(data)
+        if (data.data.status_code === 200) {
+          this.info = data.data.customer_service
+          this.$apply()
+        }
+      }
+    })
+    this.$apply()
+  };
+}
+</script>
+<style lang="less">
+ .call{
+  position: fixed;
+  z-index: 99999;
+  bottom: 100rpx;
+  right: 0;
+  image{
+    width: 140rpx;
+    height: 140rpx;
+    border-radius: 50%;
+  }
+ }
+ .model{
+   background: #000;
+   opacity: .5;
+   width: 750rpx;
+   height: 100%;
+   position: fixed;
+   z-index: 999999999999999;
+   top: 0;
+   left: 0;
+ }
+.modelContent{
+  background: #fff;
+  width: 750rpx;
+  height: auto;
+   position: fixed;
+   z-index: 999999999999999999;
+   bottom: 0;
+   left: 0;
+  .clear{
+    width: 750rpx;
+    display: block;
+    background: #F42652;
+    font-weight: 600;
+    font-size: 30rpx;
+    color: #fff;
+    text-align: center;
+    height: 96rpx;
+    line-height: 96rpx;
+  }
+  text{
+    display: block;
+    color: #000000;
+    font-size: 28rpx;
+    font-weight: 600;
+    text-align: center;
+    margin-top: 50rpx;
+  }
+}
+.iconkefu1{
+  font-size: 40rpx;
+  margin-right: 10rpx;
+}
+button{
+  color: #000000;
+  font-size: 28rpx;
+  font-weight: 600;
+  border:none;
+}
+.button-hover {
+  border: none;
+}
+button{
+  border: none !important;
+}
+button::after {
+  border: none !important;
+}
+</style>

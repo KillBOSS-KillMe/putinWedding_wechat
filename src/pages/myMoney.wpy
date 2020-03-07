@@ -1,0 +1,290 @@
+<template>
+  <view class="myMoney">
+    <view class="head">
+      <view class="left">
+        <text>我的余额</text>
+        <text class="cur">{{list.balance}}</text>
+        <view class="getCash" @tap="applyFor(1)">提现申请</view>
+      </view>
+      <view class="right">
+        <text>我的保证金</text>
+        <text class="cur">{{list.margin_amount}}</text>
+        <view class="getCash" @tap="applyFor(2)">提现申请</view>
+      </view>
+    </view>
+    <view class="wxCode">
+      <input type="text" placeholder="请输入微信号" value="{{wxCode}}" @input="getWXCode" />
+      <view @tap="modifyWXCode">修改微信号</view>
+    </view>
+    <view class="moneyList">
+      <text class="moneyDetail">收支明细</text>
+      <view class="moneyBox">
+         <repeat for="{{list.capitalflowlogs}}" item="item">
+          <view class="item" data-id="{{item.id}}">
+            <view class="flex">
+              <view>
+                <view class="name">{{item.type}}</view>
+                <view class="date">{{item.updated_at}}</view>
+              </view>
+              <view class="money">
+                <text>{{item.flow_type}}</text>
+                <text>￥{{item.flow_amount}}</text>
+              </view>
+            </view>
+          </view>
+        </repeat>
+      </view>
+      <view wx:if='{{list.capitalflowlogs == 0}}' class="none">
+        <icon class="iconfont iconc-kongzhuangtai"></icon>
+        <text>没有找到相关信息</text>
+      </view>
+    </view>
+    <cal></cal>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  import Call from '../components/call' // 客服
+  export default class MyMoney extends wepy.page {
+    config = {
+      navigationBarTitleText: '钱包'
+    }
+    components = {
+      cal:Call
+    }
+
+    mixins = []
+
+    data = {
+      userInfo: {},
+      list: [],
+      current_page: 1,
+      last_page: 0,
+      arm:'', 
+      wxCode: ''
+    }
+
+    computed = {}
+
+    methods = {
+      applyFor(e) {
+        console.log(e)
+        if(e == 1){
+          this.$navigate(`/pages/meCash`)
+        } else if(e == 2) {
+          this.cashIn()
+        }
+      },
+      // 获取输入的微信号
+      getWXCode(e) {
+        this.wxCode = e.detail.value
+      }
+    }
+    events = { }
+    onLoad() { 
+    }
+    onShow() {
+      this.getList()
+      this.$apply()
+    }
+    //获取数据
+    getList() {
+      wx.showToast({
+        title: '数据提交中...',
+        icon: 'loading',
+        duration: 1000000
+      })
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/merchant/wallet`,
+        header: {
+          authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        method: 'GET',
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.log(data)
+          if (data.data.status_code === 200 || data.data.status_code === 201) {
+            this.list = data.data.data
+            this.wxCode = this.list.wx_user_name
+            this.$apply()
+          } else{
+            console.log(data)
+          }
+        }
+      })
+    }
+    modifyWXCode() {
+      if (this.wxCode == '') {
+        wx.showToast({
+          title: '请输入微信号',
+          icon: 'none',
+          duration: 2000
+        })
+        return false
+      }
+      wx.showToast({
+        title: '数据提交中...',
+        icon: 'loading',
+        duration: 1000000
+      })
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/merchant/wx-user-save`,
+        header: {
+          authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        data: {
+          wx_name: this.wxCode
+        },
+        method: 'POST',
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          if (data.data.status_code === 200 || data.data.status_code === 201) {
+            wx.showToast({
+              title: '修改成功',
+              icon: 'success',
+              duration: 2000
+            })
+          } else{
+            console.log(data)
+          }
+        }
+      })
+    }
+    //保证金退还
+    cashIn() {
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/margin-refund`,
+        header: {
+          authorization: this.$parent.globalData.token
+        },
+        method: 'POST',
+        success: data => {
+          data = this.$parent.null2str(data)
+          console.log(data)
+          if (data.data.status_code === 200 || data.data.status_code === 201) {
+            wx.showToast({
+              title: "提现申请成功",
+              icon: 'success',
+              duration: 1000
+            });
+            this.$apply()
+          } else{
+            console.log(data)
+          }
+        }
+      })
+    }
+    // 下拉加载
+    onReachBottom(){
+      this.current_page++;
+      this.getList()
+    }
+  }
+</script>
+<style lang="less">
+.wxCode {
+  width: 690rpx;
+  height: auto;
+  padding: 30rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  input {
+    width: 460rpx;
+    height: 70rpx;
+    padding-right: 30rpx;
+    color: #333;
+  }
+  view{
+    width: 200rpx;
+    height: 70rpx;
+    background-color: #F42652;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+.myMoney{
+  width: 690rpx;
+  padding: 30rpx;
+  .head{
+    width: 690rpx;
+    display: flex;
+    justify-content: space-between;
+    margin: 30rpx 0;
+    text{
+      font-size: 28rpx;
+      color: #666;
+      display: block;
+      text-align: center;
+    }
+    text.cur{
+      color: #F42652;
+      font-size: 50rpx;
+      font-weight: 600;
+      margin-top: 18rpx;
+    }
+    .left{
+      border-right: 1rpx solid#D0D0D0;
+    }
+    .left,.right{
+      width: 320rpx;
+      padding: 0 12rpx;
+    }
+  }
+  .moneyList{
+    .moneyDetail{
+      font-size: 32rpx;
+      color: #1f1f1f;
+      font-weight: 600;
+    }
+    .flex{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10rpx;
+    }
+    .item{
+      width: 690rpx;
+      height: auto;
+      border-bottom: 1rpx solid #D8D8D8;
+      padding: 30rpx 0 20rpx;
+      text{
+        font-size: 28rpx;
+        font-weight: 600;
+        color: #333;
+      }
+      .name{
+        font-size: 28rpx;
+        color: #333;
+      }
+      .money{
+        font-weight: 600;
+      }
+      .date{
+        color: #999;
+        font-size: 24rpx;
+        margin-top: 10rpx;
+      }
+    }
+  }
+  .getCash{
+    margin: 60rpx auto;
+    color: #fff;
+    background: #F42652;
+    width: 180rpx;
+    height: 60rpx;
+    line-height: 60rpx;
+    text-align: center;
+    border-radius: 10rpx;
+    font-size: 28rpx;
+  }
+}
+</style>

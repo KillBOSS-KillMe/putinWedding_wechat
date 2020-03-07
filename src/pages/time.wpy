@@ -1,0 +1,723 @@
+<template>
+  <view>
+    <view class="modal-dialog">
+      <view class='modalBox'>
+        <!-- <view class='calendarTitleh1'>
+          选择调整价格时间
+          <!-- <view @tap="selAll">全选</view> -->
+        <!-- </view> --> 
+        <view class='calendarTitle'>
+          <icon class="iconfont iconjiantou_zuo" @tap="upMonth"></icon>
+          {{thisYear}}年{{thisMonth}}月
+          <icon class="iconfont iconjiantou1" @tap="downMonth"></icon>
+          <view class="selAll" @tap="selAll">全选</view>
+        </view>
+        <!-- 星期显示 -->
+        <view class='calendarTitle'>
+          <repeat for="{{week}}" item="item">
+            <view class="week">{{week[index]}}</view>
+          </repeat>
+        </view>
+        <view class="timeListDom">
+          <repeat for="{{weekNum}}" item="item">
+            <view></view>
+          </repeat>
+          <repeat for="{{dayListNode[showMonth]}}" item="item">
+            <view class="items noActive" wx:if="{{item.isDid == 0}}">
+              {{item.day}}
+              <text class="num">{{item.num}}</text>
+            </view>
+            <view class="items {{item.sel == 1?'active':''}} {{selIndex == index?'activeBorder':''}}" wx:if="{{item.isDid == 1 && step == 1}}"
+              @tap="chooseDate"
+              data-sel="{{item.sel}}"
+              data-key="{{showMonth}}"
+              data-index="{{index}}"
+              data-time="{{item.time_start}}"
+              data-value="{{item.day}}">
+              <view class="num" wx:if="{{item.sel == 1}}">{{item.amount}}</view>
+              {{item.day}}
+              <view class="price" wx:if="{{item.sel == 1}}">￥{{item.price}}</view>
+            </view>
+          </repeat>
+        </view>
+      </view>
+    </view>
+    <view class="item">
+      <view>
+        <label>数量</label>
+        <input type="number" data-name="num" value="{{specialsAmount}}" @input="getSpecialsAmount" placeholder="请输入数量" />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="item">
+      <view>
+        <label>同行价</label>
+        <input type="number" data-name="num" value="{{formNode.peer_price}}" @input="getPeer_price" placeholder="请输入价格" />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="item">
+      <view>
+        <label>市场价</label>
+        <input type="number" data-name="num" value="{{specialsPrice}}" @input="getSpecialsPrice" placeholder="请输入价格" />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <!-- <view class="item">
+      <view>
+        <label>价格</label>
+        <input type="number" data-name="num" value="{{formNode.price}}" placeholder="请输入价格" />
+      </view>
+      <icon class="iconfont iconjiantou"></icon>
+    </view> -->
+    <view class="getTime">
+      <view @tap="addSpecials">保存</view>
+      <view @tap="delSpecials">删除</view>
+    </view>
+    <view class="getTime">
+      <view @tap="carryOut">完成</view>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  export default class Time extends wepy.page {
+    config = {
+      navigationBarTitleText: '预览'
+    }
+    components = {
+    }
+
+    mixins = []
+
+    data = {
+      formNode: {},
+      // formNode: {
+      //   amount: "20",
+      //   description: "",
+      //   images: [],
+      //   industry_id: "",
+      //   industry_name: "",
+      //   market_price: "14",
+      //   peer_price: "13",
+      //   price: "15",
+      //   service_area: "",
+      //   service_area_name: "",
+      //   specials: [],
+      //   time_end: "2019/12/20",
+      //   time_start: "2019/12/20",
+      //   title: ""
+      // },
+      specialsIndex: '',
+      specialsPrice: 0,
+      specialsTime: '',
+      specialsAmount: 0,
+      // let specialsIndex = this.specialsIndex
+      //   let specialsPrice = this.specialsPrice
+      //   let specialsTime = this.specialsTime
+      // 日历部分
+      // showModal:true,
+      week:["日","一","二","三","四","五","六"],
+      showMonth: '',
+      dayListNode: {},
+      weekNum:0,
+      thisMonth:0,
+      thisYear:0,
+      tiemNumSelData: null,
+      step: 1,
+      calendarData: [],
+      markers: null,
+      selIndex: null
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      // 上一月
+      upMonth() {
+        let data = this.$parent.getPreMonth(this.thisTime)
+        this.thisTime = data
+        this.$apply()
+        data = data.split('-')
+        this.showMonth = `time${parseInt(data[0])}_${parseInt(data[1])}`
+        this.$apply()
+        this.getWeek(data[0], data[1], data[2])
+      },
+      // 下一月
+      downMonth() {
+        let data = this.$parent.getNextMonth(this.thisTime)
+        this.thisTime = data
+        this.$apply()
+        data = data.split('-')
+        this.showMonth = `time${parseInt(data[0])}_${parseInt(data[1])}`
+        this.$apply()
+        this.getWeek(data[0], data[1], data[2])
+      },
+      // 时间数量选择
+      tiemNumSel(e) {
+        let num = e.detail.value
+        let dayListNode = this.dayListNode
+        var index = e.currentTarget.dataset.index
+        var val = e.currentTarget.dataset.value
+        let key = e.currentTarget.dataset.key
+        dayListNode[key][index]['num'] = parseInt(num)
+        this.dayListNode = dayListNode
+        this.$apply()
+      },
+      getPeer_price(e) {
+        let val = e.detail.value || 0
+        val = parseInt(val)
+        this.formNode.peer_price = val
+        this.$apply()
+      },
+      // 获取输入的数量
+      getSpecialsAmount(e) {
+        let val = e.detail.value || 0
+        val = parseInt(val)
+        this.specialsAmount = val
+        this.formNode.amount = val
+        this.$apply()
+      },
+      // 获取输入的价格
+      getSpecialsPrice(e) {
+        let val = e.detail.value || 0
+        val = parseInt(val)
+        this.specialsPrice = val
+        this.formNode.market_price = val
+        this.$apply()
+      },
+      // 添加特殊档期
+      addSpecials() {
+        let specials = this.formNode.specials
+        let specialsIndex = this.specialsIndex
+        let specialsPrice = this.specialsPrice
+        let specialsTime = this.specialsTime
+        let specialsAmount = this.specialsAmount
+        if (specialsIndex == '') {
+          wx.showToast({
+            title: '请先选择时间',
+            icon: 'none'
+          })
+          return false
+        }
+        if (specials.length == 0) {
+          specials.push({
+            price: specialsPrice,         // 价格
+            amount: specialsAmount,        // 数量
+            time_start: specialsTime,    // 开始时间
+            time_end: specialsTime       // 结束时间
+          })
+        } else {
+          let key = `time${this.thisYear}_${this.thisMonth}`
+          let thisMonthList = this.dayListNode[key]
+          for (let i = 0; i < thisMonthList.length; i++) {
+            let thisItemTiem = new Date(thisMonthList[i].time_start.replace(/-/g,"/")).getTime()
+            if (specialsIndex == thisItemTiem) {
+              let is_have = true
+              for (let s = 0; s < specials.length; s++) {
+                let itemTiem = new Date(specials[s].time_start.replace(/-/g,"/")).getTime()
+                if (specialsIndex == itemTiem) {
+                  specials[s].price = specialsPrice
+                  specials[s].amount = specialsAmount
+                  is_have = false
+                }
+              }
+              if (is_have) {
+                specials.push({
+                  price: specialsPrice,         // 价格
+                  amount: specialsAmount,        // 数量
+                  time_start: specialsTime,    // 开始时间
+                  time_end: specialsTime       // 结束时间
+                })
+              }
+              break
+            }
+          }
+        }
+        this.formNode.specials = specials
+        this.$apply()
+        this.refreshMonthDom()
+      },
+      // 删除特殊档期
+      delSpecials(e) {
+        let specials = this.formNode.specials
+        let specialsIndex = this.specialsIndex
+        for (let i = 0; i < specials.length; i++) {
+          let thisItemTiem = new Date(specials[i].time_start.replace(/-/g,"/")).getTime()
+          if (specialsIndex == thisItemTiem) {
+            specials.splice(i, 1)
+          }
+        }
+        this.formNode.specials = specials
+        this.$apply()
+        this.refreshMonthDom()
+      },
+      // 完成--返回上一页
+      carryOut() {
+        let specials = this.formNode.specials
+        if (specials.length == 0) {
+          wx.showToast({
+            title: '请选择档期',
+            icon: 'none'
+          })  
+          return
+        }
+        // 获取开始时间和结束时间
+        if (specials.length > 0) {
+          let startTime = specials[0].time_start
+          let endTime = specials[0].time_end
+          for (let i = 0; i < specials.length; i++) {
+            // specials
+            if (new Date(startTime.replace(/-/g,"/")).getTime() > new Date(specials[i].time_start.replace(/-/g,"/")).getTime()) {
+              startTime = specials[i].time_start
+            }
+            if (new Date(endTime.replace(/-/g,"/")).getTime() < new Date(specials[i].time_end.replace(/-/g,"/")).getTime()) {
+              endTime = specials[i].time_end
+            }
+          }
+          this.formNode.time_start = startTime
+          this.formNode.time_end = endTime
+        }
+        // 将formNode存入全局变量中
+        this.$parent.globalData.serviceFormNode = this.formNode
+        console.log(this.formNode)
+        wx.navigateBack({
+          delta: -1
+        })
+      }
+    }
+
+    events = {
+
+    }
+
+    onLoad(e) {
+      // 生成0-100的数组
+      this.tiemNumSelData = [...Array(100).keys()]
+      this.formNode = this.$parent.globalData.formNode
+      // this.specialsPrice = this.formNode.market_price
+      // this.specialsAmount = this.formNode.amount
+      this.$apply()
+    }
+    onShow() {
+      let date = new Date();
+      var year = date.getFullYear(); //获取当前年份   
+      var month = date.getMonth()+1; //获取当前月份   
+      var day = date.getDate(); //获取当前日
+      this.thisTime = `${year}-${month}-${day}`
+      this.formNode.time_start = this.thisTime
+      this.formNode.time_end = new Date(year, month, 0);
+      this.showMonth = `time${parseInt(year)}_${parseInt(month)}`
+      this.$apply()
+      this.getWeek(year, month, day)
+    }
+    onUnload() {
+      
+    }
+    // 刷新当月数据显示
+    refreshMonthDom() {
+      this.specialsIndex = ''
+      this.selIndex = null
+      this.$apply()
+      let data = this.thisTime
+      this.thisTime = data
+      this.$apply()
+      data = data.split('-')
+      this.showMonth = `time${parseInt(data[0])}_${parseInt(data[1])}`
+      this.$apply()
+      this.getWeek(data[0], data[1], data[2])
+    }
+    // 全选
+    selAll() {
+      // 获取用于显示的日历数据
+      let dayListNode = this.dayListNode
+      // 获取当前显示的月份时间
+      let thisTime = this.thisTime
+      thisTime = thisTime.split('-')
+      // 获取当前显示的月份
+      let month = thisTime[1]
+      let year = thisTime[0]
+      for(let key in dayListNode) {
+        let itemMonthVal = key.split('_')
+        let listYear = itemMonthVal[0].split('e').pop()
+        // 拿出数据中心每月的数据
+        let itemMonth = dayListNode[key]
+        // 如果月份为当前月--当前年
+        if (parseInt(month) == parseInt(itemMonthVal[1]) && parseInt(year) == parseInt(listYear)) {
+          for (let i = 0; i < itemMonth.length; i++) {
+            if (itemMonth[i].isDid == 1) {
+              itemMonth[i].sel = 1
+            }
+          }
+        }
+        dayListNode[key] = itemMonth
+      }
+      // 创建特殊档期
+      let specials = []
+      // 获取输入的价格
+      let specialsPrice = this.specialsPrice
+      // 获取输入的数量
+      let specialsAmount = this.specialsAmount
+      for(let key in dayListNode) {
+        // 获取当前月数据
+        let itemMonth = dayListNode[key]
+        for (let i = 0; i < itemMonth.length; i++) {
+          if (itemMonth[i].sel == 1) {
+            // 生成特殊档期
+            specials.push({price: specialsPrice, amount: specialsAmount, time_start: itemMonth[i].time_start, time_end: itemMonth[i].time_end})
+          }
+        }
+      }
+      // 将生成的特殊档期数据存入formNode
+      this.formNode.specials = specials
+      // console.log(specials)
+      this.getWeek(thisTime[0], thisTime[1], thisTime[2])
+    }
+
+    getWeek(year, month, day) {
+      year = parseInt(year)
+      month = parseInt(month)
+      day = parseInt(day)
+      var arr = [];
+      var now = new Date();
+      var nowYear = now.getFullYear();
+      var nowMonth = now.getMonth()+1;
+      var nowDay = now.getDate();
+      // 获取月份天数
+      var thisMonthNum = new Date(year,month,0).getDate();
+      let amount = this.formNode.amount
+      let time_endStamp = new Date(year, month, 0).getTime()
+      let time_startStamp = new Date(this.formNode.time_start.replace(/-/g,"/")).getTime()
+      let specials = this.formNode.specials
+      // // 获取开始时间和结束时间
+      if (specials.length > 0) {
+        let startTime = specials[0].time_start
+        let endTime = specials[0].time_end
+        for (let i = 0; i < specials.length; i++) {
+          // specials
+          if (new Date(startTime.replace(/-/g,"/")).getTime() > new Date(specials[i].time_start.replace(/-/g,"/")).getTime()) {
+            startTime = specials[i].time_start
+          }
+          if (new Date(endTime.replace(/-/g,"/")).getTime() < new Date(specials[i].time_end.replace(/-/g,"/")).getTime()) {
+            endTime = specials[i].time_end
+          }
+        }
+        // this.formNode.time_start = startTime
+        // this.formNode.time_end = endTime
+      }
+      
+      // 保存form数据到全局变量
+      // this.$parent.globalData.formNode = this.formNode
+      for(var i = 1; i <= thisMonthNum; i++) {
+        // 显示年份大于等于当前年份
+        let startTime = `${year}/${month}/${i}`
+        let endTime = `${year}/${month}/${i}`
+        let timeStamp = new Date(startTime.replace(/-/g,"/")).getTime()
+        if (timeStamp >= time_startStamp && timeStamp <= time_endStamp) {
+          arr.push({day: i, sel: 0, isDid: 1, amount: amount, time_start: startTime, time_end: endTime})
+          for (let s = 0; s < specials.length; s++) {
+            let specialsTimeStamp = new Date(specials[s].time_start).getTime()
+            if (timeStamp == specialsTimeStamp) {
+              let thisindex = i - 1
+              arr[thisindex]['sel'] = 1
+              arr[thisindex]['price'] = specials[s].price
+              arr[thisindex]['amount'] = specials[s].amount
+              arr[thisindex]['time_start'] = specials[s].time_start
+              arr[thisindex]['time_end'] = specials[s].time_end
+            }
+          }
+        } else {
+          arr.push({day: i, sel: 0, isDid: 0, amount: amount, time_start: startTime, time_end: endTime})
+        }
+      }
+      
+      // 获取前置个数
+      var d = new Date();
+      d.setFullYear(year);
+      d.setMonth(month-1);
+      d.setDate(1);
+      var n = d.getDay();
+      this.weekNum = n
+      let key = `time${year}_${month}`
+      this.dayListNode[key] = arr
+      this.thisMonth = month
+      this.thisYear = year
+      this.showModal = false
+      this.$apply()
+    }
+    // 选中日期、取消选中
+    chooseDate(e) {
+      // let dayListNode = this.dayListNode
+      // 用于编辑状态选中
+      this.selIndex = e.currentTarget.dataset.index
+
+      // 用于匹配时间戳，控制特殊档期数据
+      let clickTime = e.currentTarget.dataset.time
+      this.specialsIndex = new Date(clickTime).getTime()
+      this.specialsTime = clickTime
+
+      // this.specialsAmount
+      this.$apply()
+    }
+    /** 
+     * 弹出框蒙层截断touchmove事件 
+     */
+    preventTouchMove() {
+    }
+    /** 
+      * 隐藏模态对话框 
+      */
+    hideModal() {
+      this.showModal = true
+      this.$apply()
+    }
+    showModalBtn() {
+      this.showModal = false
+      this.$apply()
+    }
+  }
+</script>
+<style lang="less">
+  .activeBorder{
+    box-shadow: 0 0 18rpx 6rpx #999;
+  }
+  .com{
+    padding-bottom: 120rpx;
+  }
+  .item{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    // align-items: center;
+    justify-content: space-between;
+    view{
+      width: 660rpx;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    label{
+      width: 120rpx;
+      padding-right: 20rpx;
+      font-size: 28rpx;
+      font-weight: 600;
+      color: #1F1F1F;
+    }
+    text{
+      width: 500rpx;
+      font-size: 30rpx;
+      color: #333;
+    }
+    icon{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30rpx;
+      height: 30rpx;
+      font-size: 30rpx;
+      color: #1F1F1F;
+    }
+    input{
+      width: 552rpx;
+    }
+    textarea{
+      width: 530rpx;
+      height: 160rpx;
+      padding: 10rpx;
+      border-radius: 10rpx;
+      border: 1rpx solid #DFDFDF;
+    }
+  }
+  .title{
+    width: 690rpx;
+    height: auto;
+    padding: 30rpx;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1F1F1F;
+    text{
+      font-size: 28rpx;
+      font-weight: 500;
+      color: #999999;
+    }
+  }
+
+
+
+.modalBox{
+  width: 100%;
+  font-size: 32rpx;
+}
+.box{
+  margin: 0 auto;
+  width: 630rpx;
+}
+.calendarTitleh1{
+  position: relative;
+  width: 100%;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1F1F1F;
+  view{
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+.calendarTitle{
+  width: 100%;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #1F1F1F;
+  position: relative;
+  .selAll{
+    position: absolute;
+    top: 15rpx;
+    right: 0;
+    padding: 10rpx 20rpx;
+    background-color: #F42652;
+    color: #fff;
+    font-size: 28rpx;
+    border-right: 50rpx;
+    text-align: center;
+  }
+  view{
+    width: 101.4rpx;
+  }
+  .iconfont{
+    width: 80rpx;
+    height: 80rpx;
+    font-size: 50rpx;
+    color: #999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .iconjiantou_zuo{
+    font-size: 30rpx;
+  }
+}
+.week{
+  display: inline-block;
+  width:90rpx;
+  height: 80rpx;
+  text-align: center;
+  line-height: 80rpx;
+  border-bottom: 1rpx solid #ddd;
+  view{
+    position: relative;
+    background-color: #fff;
+  }
+  
+}
+.timeListDom{
+  width: 710rpx;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: row;
+  flex-wrap: wrap;
+  .items{
+    width: 81.4rpx;
+    height: 90rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 10rpx 10rpx;
+    position: relative;
+    color: #999999;
+    .num{
+      position: absolute;
+      top: 5rpx;
+      right: 5rpx;
+      font-size: 20rpx;
+      // color: #F42652;
+    }
+    .price{
+      position: absolute;
+      bottom: 5rpx;
+      right: 5rpx;
+      font-size: 20rpx;
+      // color: #F42652;
+    }
+  }
+  .noActive{
+    background-color: #EDEDED;
+    color: #999999;
+    text{
+      color: #F42652;
+    }
+  }
+  .active{
+    background-color: #F42652;
+    color: #fff;
+    text{
+      color: #fff;
+    }
+  }
+}
+
+.getTime{
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  view{
+    margin: 10rpx 0;
+    background-color: #F42652;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #fff;
+    width: 280rpx;
+    height: 80rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+/* 模态框 */
+  
+.modal-mask { 
+  width: 100%; 
+  height: 100%; 
+  position: fixed; 
+  top: 0; 
+  left: 0; 
+  background: #000; 
+  opacity: 0.5; 
+  overflow: hidden; 
+  z-index: 9000; 
+}
+.modal-dialog { 
+  width: 710rpx; 
+  padding: 0 20rpx;
+  overflow: hidden; 
+  // position: fixed; 
+  // left: 0; 
+  // right: 0;
+  // bottom: 0;
+  margin: 0 auto; 
+  z-index: 9999; 
+  background: rgba(255, 255, 255, 1); 
+  border-radius: 5rpx; 
+} 
+</style>

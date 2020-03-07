@@ -1,0 +1,171 @@
+<template>
+  <view>
+    <view class="success">
+      <image src="../image/grabOrder.png" />
+      <view>订单支付成功</view>
+    </view>
+    <view class="info">
+      <!-- <icon class="iconfont iconkefu"></icon> -->
+      <text>支付方式:</text>
+      <!-- <text class="label">￥188ss.88</text> -->
+      <text class="label">微信支付</text>
+    </view>
+    <view class="info">
+      <!-- <icon class="iconfont iconkefu"></icon> -->
+      <!-- <text>支付金额:</text> -->
+      <!-- <text class="label">￥188ss.88</text> -->
+    </view>
+    <view class="operating">
+      <view @tap="go(1)">查看订单</view>
+      <view @tap="go(2)">回到首页</view>
+    </view>
+    <view class="prompt">
+      <view class="item">
+        <icon class="iconfont iconkefu"></icon>
+        温馨提示：
+      </view>
+      <view class="item">
+        婚庆帮汇平台不会以订单异常，系统升级为也有要求您点击任何网址链接进行退款操作。
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  export default class PaySuccess extends wepy.page {
+    config = {
+      navigationBarTitleText: '支付成功'
+    }
+    components = {
+    }
+
+    mixins = []
+
+    data = {
+      userInfo: null,
+      cityNode: [],
+      searchList: []
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      go(e) {
+        console.log(e)
+        if(e == 1) {
+          wx.redirectTo({
+            url: `/pages/meOrder`
+          })
+        } else if (e == 2) {
+          wx.redirectTo({
+            url: `/pages/index`
+          })
+        }
+      }
+    }
+
+    events = {
+
+    }
+
+    onLoad() {
+      this.userInfo = this.$parent.globalData.userInfo
+    }
+    onUnload() {
+    }
+  }
+</script>
+<style lang="less">
+  .success{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding-top: 200rpx;
+    padding-bottom: 40rpx;
+    view{
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1f1f1f;
+      margin-top: 30rpx;
+    }
+    image{
+      width: 100rpx;
+      height: 100rpx;
+      border-radius: 100rpx;
+    }
+  }
+  .info{
+    width: 750rpx;
+    height: auto;
+    padding: 20rpx 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    icon{
+      font-size: 30rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-right: 20rpx;
+    }
+    text{
+      font-size: 25rpx;
+    }
+    .label{
+      color: red;
+      padding-left: 20rpx;
+    }
+  }
+  .title{
+    width: 750rpx;
+    padding: 30rpx 0;
+    font-size: 35rpx;
+    font-weight: 600;
+    color: #999;
+  }
+  .operating{
+    width: 750rpx;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40rpx 0;
+    view{
+      width: 200rpx;
+      height: 70rpx;
+      margin: 0 20rpx;
+      border-radius: 10rpx;
+      border: 1rpx solid #F42652;
+      font-size: 25rpx;
+      color: #fff;
+      background-color: #F42652;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+  .prompt{
+    width: 750rpx;
+    height: auto;
+    font-size: 25rpx;
+    color: #999;
+    icon{
+      padding-right: 20rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .item{
+      padding: 0 30rpx;
+      width: 690rpx;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      line-height: 49rpx;
+    }
+  }
+</style>

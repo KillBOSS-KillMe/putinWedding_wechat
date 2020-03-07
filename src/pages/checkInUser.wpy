@@ -1,0 +1,344 @@
+<template>
+	<view class="check">
+		<view class="checkItem">
+			<label for="phone">手机号</label>
+			<input type="number" data-name="phone" @input="getSetData" id="phone" placeholder="请输入手机号" placeholder-class="placeholder" />
+		</view>
+		<view class="checkItem">
+			<label for="verification">验证码</label>
+			<input type="number" data-name="verification_code" @input="getSetData" id="verification" placeholder="请输入验证码" placeholder-class="placeholder" />
+			<view class="getCode" @tap="getCode">{{time}}</view>
+		</view>
+		 <view class="moveInto" @tap="sub">申请入驻</view>
+		 <button open-type="getUserInfo" id='getUserInfo' wx:if="{{userInfoButtonShow}}" lang="zh_CN" @getuserinfo="onGetUserInfo"></button>
+	</view>
+</template>
+
+<script>
+import wepy from 'wepy'
+export default class CheckInUser extends wepy.page {
+  config = {
+    navigationBarTitleText: '用户入住'
+  };
+  components = {};
+	data = {
+		index: '',
+		formNode: {
+			code: '',								// 小程序code(必填）
+			avatar: '',							// 头像(可选)
+			sex: '',								// 性别(可选)
+			nickname: '',						// 昵称(可选)
+			verification_key: '',   // 验证码session_key 短信接口返回(必选)
+			verification_code: '',	// 手机收到的验证码(必选)
+			type: '',								// 用户类型
+			phone: '',             	// 电话
+			city: ''
+		},
+		disabled: false,
+		currentTime: 60,   // 倒计时初始值
+		time: '发送验证码',
+		code: '',
+		userInfoButtonShow: true
+	};
+	methods = {
+		// 表单数据获取
+		getSetData(e) {
+			let formNode = this.formNode
+			let name = e.currentTarget.dataset.name
+			let value = e.detail.value
+			formNode[name] = value
+			this.formNode = formNode
+			this.$apply()
+		},
+		getCode() {
+			// 获取验证码
+			this.runGetCode()
+		},
+	}
+	onLoad(options) {
+		this.formNode.type = options.type
+		
+		// 用户信息获取
+		this.onGetUserInfo()
+		// 定位
+		this.getLocation()
+		this.$apply()
+	}
+	mixins = [];
+	sub() {
+		let formNode = this.formNode
+		console.log(formNode)
+		if (formNode.nickname == '') {
+			wx.showToast({
+				title: "无用户信息，请求获取用户信息",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		if (formNode.city == '') {
+			wx.showToast({
+				title: "无城市信息，请求获取当前位置",
+				icon: 'none',
+				duration: 2000
+			});
+			// 定位
+			this.getLocation()
+			return false
+		}
+		if (formNode.phone == '') {
+			wx.showToast({
+				title: "请输入手机号",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		if (formNode.phone.length != 11) {
+			wx.showToast({
+				title: "请输入正确的手机号",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		if (formNode.verification_key == '') {
+			wx.showToast({
+				title: "请发送验证码",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		if (formNode.verification_code == '') {
+			wx.showToast({
+				title: "请输入验证码",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		wx.showToast({
+			title: '注册中...',
+			icon: 'loading',
+			duration: 1000000
+		});
+		wepy.login({
+			success: res => {
+				if (res.code) {
+					this.formNode.code = res.code
+					this.$apply()
+					wx.request({
+						url: `${this.$parent.globalData.requestUrl}/register`,
+						method: 'POST',
+						header: {
+							Authorization: this.$parent.globalData.token,
+							apikey: this.$parent.globalData.apikey
+						},
+						data: this.formNode,
+						success: data => {
+							wx.hideToast()
+							data = this.$parent.null2str(data)
+							console.log(data)
+							if (data.data.status_code == 200) {
+								wx.showToast({
+									title: "注册成功，进入首页",
+									icon: 'none',
+									duration: 2000
+								})
+								let that = this
+								setTimeout(() => {
+									wx.reLaunch({
+										url: `/pages/index`
+									})
+								}, 2000)
+							} else {
+								wx.showToast({
+									title: data.data.message,
+									icon: 'none'
+								})
+							}
+						}
+					})
+				}
+			}
+		})		
+	}
+	// 获取验证码
+	runGetCode() {
+		if (this.disabled) {
+			return false
+		}
+		if (this.formNode.phone == '') {
+			wx.showToast({
+				title: "请输入手机号",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		if (this.formNode.phone.length != 11) {
+			wx.showToast({
+				title: "请输入正确的手机号",
+				icon: 'none',
+				duration: 2000
+			});
+			return false
+		}
+		wx.showToast({
+			title: "请求发送中...",
+			icon: 'loading',
+			duration: 10000
+		});
+		this.disabled = true
+		this.$apply()
+		wx.request({
+			url: `${this.$parent.globalData.requestUrl}/verificationCodes`,
+			method: 'POST',
+			header: {
+				'content-type':'application/json',
+				apikey: this.$parent.globalData.apikey
+			},
+			data: {
+				phone: this.formNode.phone
+			},
+			success: data => {
+				wx.hideToast()
+				data = this.$parent.null2str(data)
+				if (data.statusCode == 201) {
+					wx.showToast({
+						title: '验证码发送成功',
+						icon: 'success',
+						duration: 2000
+					});
+					this.formNode.verification_key = data.data.key
+					this.$apply()
+					// 倒计时
+					this.countdown()
+				} else {
+					wx.showToast({
+						title: data.data.msg,
+						icon: 'none'
+					});
+				}
+			}
+		})
+	}
+	// 倒计时
+	countdown() {
+		var currentTime = this.currentTime;
+		this.time = `倒计时${currentTime}秒`
+		this.$apply()
+		var interval = setInterval(() => {
+			this.time = '倒计时' + (currentTime - 1) + '秒'
+			this.$apply()
+			currentTime--
+			if (currentTime <= 0) {
+				clearInterval(interval)
+				this.time = '重新获取'
+				this.currentTime = 60
+				this.disabled = false
+				this.$apply()
+			}
+		}, 1000)
+	}
+		// 用户信息获取
+	onGetUserInfo() {
+		// 查看是否授权
+		wx.getSetting({
+			success: res => {
+				if (res.authSetting['scope.userInfo']) {
+					this.userInfoButtonShow = false
+					this.$apply()
+					// 已经授权，可以直接调用 getUserInfo 获取头像昵称
+					wx.getUserInfo({
+						success: res => {
+							let userInfo = res.userInfo
+							this.$parent.globalData.userInfo = userInfo
+							this.formNode.avatar = userInfo.avatarUrl
+							this.formNode.nickname = userInfo.nickName
+							this.formNode.sex = userInfo.gender
+							this.$apply()
+						}
+					})
+				}
+			}
+		})
+	}
+	// 定位
+	getLocation() {
+		wx.getLocation({
+			type: 'wgs84',   //  默认为 wgs84 返回 gps 坐标，gcj02 返回可用于 wx.openLocation 的坐标
+			desc: '你的位置信息将用于小程序位置接口的效果展示',
+			success: res => {
+				this.longitude = res.longitude
+				this.latitude = res.latitude
+				this.$apply()
+				this.loadCity(this.longitude, this.latitude)
+			},
+			fail: res => {
+				this.longitude = ''
+				this.latitude = ''
+				this.$apply()
+			}
+		})
+	}
+	loadCity(longitude, latitude) {
+		wx.request({
+			url: `https://apis.map.qq.com/ws/geocoder/v1/?location=${latitude},${longitude}&key=${this.$parent.globalData.mapKey}`,
+			data: {},
+			success: (res) => {
+				console.log(res)
+				this.formNode.city = (res.data.result.ad_info.city_code).substring(3,10)
+				this.$apply()
+			}
+		})
+	}
+}
+</script>
+<style lang="less">
+.check {
+  width: 750rpx;
+  .checkItem {
+    display: flex;
+    justify-content: space-between;
+    padding: 30rpx 30rpx;
+    label {
+			font-size: 30rpx;
+			color: #1F1F1F;
+			font-weight: 600;
+    }
+    input {
+      width: 520rpx;
+      text-align: left;
+    }
+    .placeholder{
+			font-size: 30rpx;
+			color: #ccc;
+    }
+  }
+  #verification {
+    width: 300rpx;
+  }
+  .getCode {
+    font-size: 22rpx;
+    color: #F42652;
+    border: 2rpx solid #F42652;
+    padding: 6rpx 14rpx;
+    border-radius: 16rpx;
+	}
+	.moveInto{
+		position: fixed;
+		bottom: 30rpx;
+		left: 50%;
+		margin-left: -300rpx;
+		width: 600rpx;
+		padding: 26rpx 0;
+		text-align: center;
+		color: #fff;
+		background: #F42652;
+		border-radius: 10rpx;
+		font-size: 30rpx;
+	}
+}
+</style>

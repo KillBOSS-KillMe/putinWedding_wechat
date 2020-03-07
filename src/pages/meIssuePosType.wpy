@@ -1,0 +1,80 @@
+<template>
+  <view class="MeIssuePosType">
+    <view class="item" @tap="go('one')">
+      <text>单品</text>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+    <view class="item" @tap="go('more')">
+      <text>套餐</text>
+      <icon class="iconfont iconjiantou"></icon>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  export default class Me extends wepy.page {
+    config = {
+      navigationBarTitleText: '选择类型'
+    }
+    components = {
+    }
+
+    mixins = []
+
+    data = {
+
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      go(e) {
+        if (e == 'one') {
+          this.$navigate({ url: "/pages/postProvide" })
+        } else {
+          this.$navigate({ url: "/pages/postProvideMore" })
+        }
+      }
+    }
+
+    events = {
+
+    }
+
+    onLoad() {
+      this.$apply()
+    }
+    onshow() {
+
+    }
+  }
+</script>
+<style lang="less">
+.MeIssuePosType{
+  width: 690rpx;
+  padding: 0 30rpx;
+  .item{
+    border-bottom: 1rpx solid #EEEEEE;
+    padding: 30rpx 0;
+    display: flex;
+    justify-content: space-between;
+    align-content: center;
+    align-items: center;
+    text{
+      color: #333333;
+      font-weight: 600;
+      font-size: 30rpx;
+    }
+    icon{
+      color: #9A9A9A;
+      font-size: 26rpx;
+    }
+  }
+}
+.MeIssuePosType .item:last-of-type{
+  border: none;
+}
+</style>

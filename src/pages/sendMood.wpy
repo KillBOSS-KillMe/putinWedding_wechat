@@ -1,0 +1,357 @@
+<template>
+  <view>
+    <view class="item">
+      <label>描述</label>
+      <view class="textarea">
+        <textarea @input="getSetData" data-name="content" placeholder="请输入服务描述" maxlength="200"></textarea>
+        <text class="currentWordNumber">{{currentWordNumber|0}}/{{max}}</text>
+      </view>
+      
+    </view>
+    <view class="title">
+      上传图片
+      <text>(最多上传3张)</text>
+    </view>
+    <view class="imgList">
+      <repeat for="{{hotelImgList}}" item="item">
+        <view class="imageItem">
+          <icon class="iconfont iconbuoumaotubiao20" @tap="del" data-index="{{index}}"></icon>
+          <image src="{{requestImgUrl+item.path.path}}" />
+        </view>
+        
+      </repeat>
+      <icon class="iconfont iconchuanzhaopian" @tap="upHotelImgList" wx:if="{{hotelImgList.length < 3}}"></icon>
+    </view>
+    <view class="sub" @tap='sub'>
+      <view>发布</view>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  import check from '../mixins/check' // 验证
+  export default class SendMood extends wepy.page {
+    config = {
+      navigationBarTitleText: '心情12'
+    }
+    components = { }
+
+    mixins = [check]
+
+    data = {
+      userInfo: null,
+      formNode: {
+        content: '',    // 描述  
+        hotel_image: ''
+      },
+      hotelImgList: [],             // 上传图片列表
+      requestImgUrl:'',
+      max: 200, //  最多字数 (根据自己需求改变) 
+      currentWordNumber: 0, 
+    }
+
+    computed = {
+
+    }
+
+    methods = {
+      // 表单数据获取
+      getSetData(e) {
+        let formNode = this.formNode
+        let name = e.currentTarget.dataset.name
+        let value = e.detail.value
+        formNode[name] = value
+        this.formNode = formNode
+        var len = parseInt(value.length);
+        console.log(len)
+        //最多字数限制
+        this.currentWordNumber = len
+        console.log(formNode)
+        this.$apply()
+      },
+      // 上传图片
+      upHotelImgList() {
+        this.runUpHotelImgList()
+      },
+      //删除图片
+      del(e) {
+        let index = e.currentTarget.dataset.index
+        console.log(index)
+        let path = this.hotelImgList[index].path.path
+        console.log(path)
+        let id = ''
+        wx.showModal({
+          title: '提示',
+          content: '确定要删除此图片吗？',
+          success: res => {
+            if (res.confirm) {
+              console.log('点击确定了');
+              wx.request({
+                url: `${this.$parent.globalData.requestUrl}/services/image_delete`,
+                header: {
+                  authorization: this.$parent.globalData.token,
+                  apikey: this.$parent.globalData.apikey
+                },
+                data:{
+                  path: path,
+                  id: id
+                },
+                method: 'POST',
+                success: data => {
+                  data = this.$parent.null2str(data)
+                  console.log(data)
+                  if (data.data.status_code == 200) {
+                    console.log(data.data)
+                    wx.showToast({
+                      title: '删除成功'
+                    })
+                    this.hotelImgList.splice(index, 1)
+                    this.formNode.hotel_image = this.hotelImgList
+                    // console.log(imgList.splice(index, 1))
+                    this.$apply()
+                  } else{
+                    wx.showToast({
+                      title: '删除失败'
+                    })
+                  }
+                }
+              })
+            } else if (res.cancel) {
+              console.log('点击取消了');
+              return false;    
+            }
+          }
+        })
+        this.$apply()
+      },
+    }
+
+    events = {
+
+    }
+
+    onLoad(e) {
+      this.requestImgUrl = this.$parent.globalData.requestImgUrl
+      this.$apply()
+      // this.calendarInit()
+    }
+    onShow() {
+    }
+    // 图片上传
+    runUpHotelImgList() {
+      let count = 3 - this.hotelImgList.length
+      wx.chooseImage({
+        count: count,
+        sizeType: ['original', 'compressed'],
+        sourceType: ['album', 'camera'],
+        success: res => {
+          wx.showToast({
+            title: '图片上传中',
+            icon: 'loading'
+          })
+          Promise.all(res.tempFiles.map(item => {
+            return new Promise((resolve, reject) => {
+              wx.uploadFile({
+                url: `${this.$parent.globalData.requestUrl}/uploads`,
+                filePath: item.path,
+                name: 'file',
+                header: {
+                  authorization: this.$parent.globalData.token,
+                  apikey: this.$parent.globalData.apikey
+                },
+                success: res => {
+                  resolve({
+                    path: JSON.parse(res.data).data
+                  })
+                }
+              })
+            })
+          })).then(e => {
+            wx.hideToast()
+            this.hotelImgList = this.hotelImgList.concat(e)
+            let hotelImgList = this.hotelImgList
+            console.log(this.hotelImgList)
+            let hotel_image = ''
+            for (let i = 0; i < hotelImgList.length; i++) {
+              hotel_image += ','
+              hotel_image += hotelImgList[i].path.path
+            }
+            hotel_image = hotel_image.substr(1)
+            this.formNode['hotel_image'] = hotel_image
+            this.$apply()
+          }).catch(err => console.log(err))
+        }
+      })
+    }
+    //发布
+    sub() {
+      let formNode = this.formNode
+      console.log(this.formNode)
+      if (formNode.content == "") {
+        wx.showToast({
+          title: '请输入描述',
+          icon: 'none'
+        })
+        return
+      }
+      wx.showToast({
+        title: '发布中...',
+        icon: 'loading',
+        duration: 10000
+      })
+      wx.request({
+        url: `${this.$parent.globalData.requestUrl}/cricles/send`,
+        method: 'POST',
+        header: {
+          authorization: this.$parent.globalData.token,
+          apikey: this.$parent.globalData.apikey
+        },
+        data: {
+          content: this.formNode.content,
+          media_paths: this.formNode.hotel_image
+        },
+        success: data => {
+          wx.hideToast()
+          data = this.$parent.null2str(data)
+          console.log(data)
+          if (data.data.status_code === 201) {
+            wx.showToast({
+              title: "发布成功",
+              icon: 'none',
+              duration: 2000
+            })
+            setTimeout(() => {
+              wx.navigateBack({
+                delta: -1
+              })
+            }, 2000)
+          } else {
+            wx.showToast({
+              title: '发布失败',
+              icon: 'none'
+            })
+          }
+        }
+      })
+    }
+  }
+</script>
+<style lang="less">
+  .com{
+    padding-bottom: 120rpx;
+  }
+  .item{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    // align-items: center;
+    justify-content: space-between;
+    view{
+      width: 660rpx;
+      display: flex;
+      // align-items: center;
+      justify-content: flex-start;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    label{
+      width: 120rpx;
+      padding-right: 20rpx;
+      font-size: 30rpx;
+      font-weight: 600;
+      color: #1F1F1F;
+    }
+    text{
+      width: 500rpx;
+      font-size: 30rpx;
+      color: #333;
+    }
+    icon{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30rpx;
+      height: 30rpx;
+      font-size: 30rpx;
+      color: #1F1F1F;
+    }
+    input{
+      width: 552rpx;
+    }
+    textarea{
+      width: 530rpx;
+      height: 140rpx;
+      padding: 10rpx;
+    }
+  }
+  .title{
+    width: 690rpx;
+    height: auto;
+    padding: 30rpx;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1F1F1F;
+    text{
+      font-size: 28rpx;
+      font-weight: 500;
+      color: #999999;
+    }
+  }
+   .imgList{
+    width: 690rpx;
+    height: auto;
+    padding: 20rpx 30rpx;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    .iconchuanzhaopian{
+      font-size: 214rpx;
+      height: 214rpx;
+      width: 214rpx;
+    }
+    .imageItem{
+      width: 214rpx;
+      height: 214rpx;
+      margin: 10rpx 21rpx 10rpx 0;
+      border-radius: 10rpx;
+      position: relative;
+    }
+    image{
+      width: 214rpx;
+      height: 214rpx;
+      // margin: 10rpx 21rpx 10rpx 0;
+      border-radius: 10rpx;
+    }
+    .imageItem:nth-child(3n){
+      margin-right: 0;
+    }
+    .iconbuoumaotubiao20{
+      color: #F42652;
+      position: absolute;
+      right: -9rpx;
+      top: -28rpx;
+    }
+  }
+  .button{
+    margin-bottom: 220rpx;
+  }
+  .currentWordNumber{
+    font-size: 22rpx;
+    position: absolute;
+    bottom: 10rpx;
+    right: -368rpx;
+  }
+  .textarea{
+    position: relative;
+    width: 530rpx;
+    height: 220rpx;
+    padding: 10rpx;
+    border-radius: 10rpx;
+    border: 1rpx solid #DFDFDF;
+  }
+</style>
